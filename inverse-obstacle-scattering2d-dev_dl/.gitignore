@@ -1,0 +1,13 @@
+*.ipynb_checkpoints/
+*/data
+*/figs
+*/ipynb
+.DS_Store
+learn/env_path.txt
+*.a
+*.o
+*mex*
+*.asv
+*.mat
+*~
+*.pyc
