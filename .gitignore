@@ -1,0 +1,13 @@
+# Ignore the auto_push.sh script
+auto_push.sh
+
+# Ignore the data directory (relative to repo root)
+inverse-obstacle-scattering2d-dev_dl/inverse-obstacle-scattering2d-dev_dl/learn/data/
+
+# Ignore log files
+
+inverse-obstacle-scattering2d-dev_dl/inverse-obstacle-scattering2d-dev_dl/learn/logs/
+
+
+inverse-obstacle-scattering2d-dev_dl/inverse-obstacle-scattering2d-dev_dl/learn_extra/data/
+
