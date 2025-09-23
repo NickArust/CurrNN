@@ -1,8 +1,8 @@
 % This script solves inverse problem based on single frequency data. The
 % data is either generated randomly in this script or read from pred.mat
-function nicks_inverse(pred_idx, noise_lvl, idx, k)
+function all_errors = nicks_inverse(model_path, noise_lvl, k_idx)
 close all
-clearvars -except pred_idx noise_lvl
+clearvars -except model_path noise_lvl k_idx
 
 data_type = 'nn'; % 'random' or 'nn_stored' or 'nn';
 partial = false;
@@ -25,7 +25,7 @@ elseif strcmp(data_type, 'random')
 elseif strcmp(data_type, 'nn')
     % CAREFUL: need to enter model_path, nc_test, and noise_level manually
     % the model_path should not end with '/'
-    model_path = 'data/star10_kh10_n48_10000/test';
+    % model_path = 'data/star10_kh10_n48_10000/test';
     nc_test = 10; % use nc in cfg_path if nc_test=0
     cfg_path = strcat(model_path, '/data_config.json');
     cfg_str = fileread(cfg_path);
@@ -75,7 +75,7 @@ sensor_info.tgt = tgt;
 sensor_info.t_dir = t_dir_grid;
 
 if strcmp(data_type, 'random') || strcmp(data_type, 'nn')
-    rng(pred_idx+ndata)
+    rng(noise_lvl*ndata)
     coef = sample_fc(cfg, 1);
     % coefs for the figures
     % nc=5, k=5
@@ -104,7 +104,9 @@ if strcmp(data_type, 'random') || strcmp(data_type, 'nn')
         c(j+M+1) = r * sin(theta); % cj+M
     end
 
-    coef = c;
+    rng('shuffle')
+    tweak_noise = 0.025 * randn(size(c));
+    coef = tweak_noise + c;
 
     % nc=20, k=30
 %     coef = [1.13417851924896	0.0319831594824791	0.00969072338193655
@@ -150,17 +152,23 @@ fprintf('the true ratio is %2.3f \n', ratio);
 [mats,erra] = rla.get_fw_mats(kh,src_info_ex,bc,sensor_info,opts);
 fields = rla.compute_fields(kh,src_info_ex,mats,sensor_info,bc,opts);
 
-rng(pred_idx)
+rng("shuffle")
 noise = 1 + noise_level * rand(n_dir*n_tgt, 1) .* exp(2*pi*1i*rand(n_dir*n_tgt, 1));
 if strcmp(data_type, 'nn')
     % apply the stored predictor
-    dirname = ['./data/star' int2str(nc) '_kh' int2str(kh) '_n' int2str(n_tgt) '_' int2str(ndata)];
+    %dirname = ['./data/star' int2str(nc) '_kh' int2str(kh) '_n' int2str(n_tgt) '_' int2str(ndata)];
+    dirname = model_path
     temp_pred_path = strcat(dirname, '/temp.mat');
     coefs_all = coef;
     uscat_all = reshape(fields.uscat_tgt .* noise, [1,n_dir, n_tgt]);
     save(temp_pred_path, 'coefs_all', 'uscat_all', 'cfg_str');
-    [status,cmdout] = system(strcat('C:\Users\blast\AppData\Local\Microsoft\WindowsApps\python3', ' predict.py --data_path=', temp_pred_path,...
-    ' --model_path=', model_path, ' --print_coef=True'));
+    % Example path: /home/karustamyan/.conda/envs/myenv/bin/python
+    python_path = '/home/karustamyan/.conda/envs/myenv/bin/python';
+    
+    cmd = sprintf('%s predict.py --data_path=%s --model_path=%s --print_coef=True', ...
+        python_path, temp_pred_path, model_path);
+    [status, cmdout] = system(cmd);
+
     cmdout
     k = strfind(cmdout,'start to print the coefficients'); % this string has length 31
     nc
@@ -227,12 +235,13 @@ if test_origin_alg
         src_info_default_res = inv_data_all{1}.src_info_all{iter_count};
     end
 end
-figure
+figure('Visible', 'off')
 hold on
 plot(src_info_ex.xs,src_info_ex.ys,'k.', 'MarkerSize', 12);
 if test_origin_alg
     plot(src_info_default_res.xs,src_info_default_res.ys,'b--', 'LineWidth',2);
 end
+
 
 if strcmp(data_type, 'random')
     plot(0, 0, 'r*');
@@ -256,12 +265,13 @@ if strcmp(data_type, 'random')
         legend('true boundary', '')
     end
 elseif strcmp(data_type, 'nn_stored') || strcmp(data_type, 'nn')
-    if noise_level > 0
-        model_path = [model_path '/noise' num2str(10*noise_level)];
+    if noise_level > 0        
+
+        model_path = strcat(model_path , '/noise' , num2str(10*noise_level))
         if ~exist(model_path, 'dir')
             mkdir(model_path);
-            mkdir([model_path '/inverse']);
-            mkdir([model_path '/figs']);
+            mkdir(strcat(model_path, '/inverse'));
+            mkdir(strcat(model_path, '/figs'));
         end
     end
     if star_specific
@@ -280,13 +290,12 @@ elseif strcmp(data_type, 'nn_stored') || strcmp(data_type, 'nn')
     d2 = pdist2(inverse_result(3:4,:)', inverse_result(5:6,:)');
     err_Chamfer = [mean([min(d1), min(d1,[],2)']), mean([min(d2), min(d2,[],2)'])] %pred, refined
     if star_specific
-        save([model_path '/inverse/inverse' num2str(pred_idx) '.mat'], "coef", "coef_pred", ...
+        save(strcat(model_path, '/inverse/inverse', num2str(noise_lvl), '.mat'), "coef", "coef_pred", ...
         "inverse_result", "err_Chamfer", "err_l2", "err_l2_refined", "err_l2_refined_orig")
     else
-        save([model_path '/inverse/inverse' num2str(pred_idx) '.mat'], "coef", "coef_pred", ...
+        save(strcat(model_path, '/inverse/inverse' ,num2str(pred_idx) ,'.mat'), "coef", "coef_pred", ...
         "inverse_result", "err_Chamfer", "err_l2", "err_l2_refined_orig")
     end
-    
     plot(src_info_pred.xs,src_info_pred.ys,'r:', 'LineWidth',2);
     plot(src_info_pred_res.xs,src_info_pred_res.ys,'m-.', 'LineWidth',2);
     plot(0, 0, 'r*');
@@ -302,9 +311,9 @@ elseif strcmp(data_type, 'nn_stored') || strcmp(data_type, 'nn')
     set(gcf, 'PaperPositionMode', 'manual');
     set(gcf, 'PaperPosition', [0 0 w h]);
     set(gcf, 'renderer', 'painters');
-    fig_path = [model_path '/figs/nc' int2str(nc) '_k' int2str(kh) '_' model_name '_' int2str(pred_idx) '.pdf'];
+    fig_path = strcat(model_path ,'/figs/nc' ,int2str(nc) ,'_kh', num2str(kh), '_' , int2str(noise_lvl*100), '_' ,int2str(k_idx) ,'.pdf')
     print(gcf, '-dpdf', fig_path);
 
-    close(fig);
+    all_errors = [err_Chamfer, err_l2, err_l2_refined]
 end
 end

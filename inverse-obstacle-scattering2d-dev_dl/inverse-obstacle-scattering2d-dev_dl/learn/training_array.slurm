@@ -6,13 +6,13 @@
 #SBATCH --mem=32G
 #SBATCH --time=2:30:00
 #SBATCH --gres=gpu:1
-#SBATCH --array=0-799%10    # 800 configs × 3 epoch‐multipliers = 2400
+#SBATCH --array=0-599%10    # 800 configs × 3 epoch‐multipliers = 2400
 
 # 1) build list of your 800 datagen config files
 mapfile -t CONFIGS < <(ls configs/data_gen_ps/nc*_ndata*_ks*_dk*_noise*.json | sort)
 
 # 2) list your epoch‐multipliers
-MUL=(1.0)
+MUL=(2)
 
 N=${#CONFIGS[@]}        # should be 800
 
@@ -107,9 +107,8 @@ python train.py \
   --model_name=model_${MULT}_${SLURM_ARRAY_TASK_ID} \
   --dirname   "$DATA_FOLDER" \
   --epochs        $epoch \
-  --save-every-nepoch $save_every_nepoch
+  --save-every-nepoch $save_every_nepoch\
   --kh-start $kh_start
 
 
 conda deactivate
-
