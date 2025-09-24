@@ -42,7 +42,7 @@ for file = files'
 
 % ... inside your file loop, after loading `matrix` ...
 % Mean & std across runs at chosen noise, error type 4
-runs_vec = squeeze(matrix(1, noise_idx, :, 4));  % -> 100x1
+runs_vec = squeeze(matrix(1, noise_idx, :, 2));  % -> 100x1
 mean_err = mean(runs_vec);
 std_err  = std(runs_vec);
 
@@ -159,7 +159,7 @@ for m = 1:length(models)
 end
 
 xlabel('Step Size');
-ylabel('Mean Refied L2 Error ± Std Dev');
+ylabel('Mean Refied Chmafer Error ± Std Dev');
 title_str = sprintf('k_s = %d, ndata = %d, noise = %d, inversion noise = %d', fixed_k0, fixed_npoints, fixed_noise, noise_idx)
 title(title_str);
 legend('show'); grid on;
