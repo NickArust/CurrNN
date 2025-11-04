@@ -5,11 +5,11 @@ close all
 clearvars -except model_path noise_lvl k_idx JCP_src
 
 
-JCP_src_pred = JCP_src(1)
-JCP_src_ref = JCP_src(2)
+JCP_src_pred = JCP_src{2}
+JCP_src_ref = JCP_src{3}
 data_type = 'nn'; % 'random' or 'nn_stored' or 'nn';
 partial = false;
-noise_level = noise_lvl;
+noise_level = noise_lvl
 % env_path = readlines('env_path.txt');
 % env_path = env_path(1); % only read the first line
 model_name = 'test';
@@ -30,7 +30,7 @@ elseif strcmp(data_type, 'nn')
     % the model_path should not end with '/'
     % model_path = 'data/star10_kh10_n48_10000/test';
     nc_test = 10; % use nc in cfg_path if nc_test=0
-    cfg_path = strcat(model_path, '/model_1.0_62/data_config.json');
+    cfg_path = strcat(model_path, '/data_config.json');
     cfg_str = fileread(cfg_path);
     idx = strfind(model_path, '/');
     model_name = model_path(idx(end)+1:end);
@@ -110,7 +110,7 @@ if strcmp(data_type, 'random') || strcmp(data_type, 'nn')
     rng('shuffle')
     tweak_noise = 0.025 * randn(size(c));
     coef = tweak_noise + c;
-
+    coef = JCP_src{1}
     % nc=20, k=30
 %     coef = [1.13417851924896	0.0319831594824791	0.00969072338193655
 %     0.0138962203636765	0.0147123169153929	-0.0254861395806074
@@ -300,7 +300,7 @@ elseif strcmp(data_type, 'nn_stored') || strcmp(data_type, 'nn')
         "inverse_result", "err_Chamfer", "err_l2", "err_l2_refined_orig")
     end
     plot(src_info_pred.xs,src_info_pred.ys,'r:', 'LineWidth',2);
-    plot(src_info_pred_res.xs,src_info_pred_res.ys,'m-.', 'LineWidth',2);
+    plot(src_info_pred_res.xs+1,src_info_pred_res.ys,'r-.', 'LineWidth',4);
     plot(JCP_src_pred.xs, JCP_src_pred.ys, 'g:', 'LineWidth', 2);
     plot(JCP_src_ref.xs, JCP_src_ref.ys, 'b-.', 'LineWidth', 2);
     plot(0, 0, 'r*');
