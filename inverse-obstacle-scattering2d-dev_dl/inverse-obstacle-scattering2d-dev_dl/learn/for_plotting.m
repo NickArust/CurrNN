@@ -300,7 +300,7 @@ elseif strcmp(data_type, 'nn_stored') || strcmp(data_type, 'nn')
         "inverse_result", "err_Chamfer", "err_l2", "err_l2_refined_orig")
     end
     plot(src_info_pred.xs,src_info_pred.ys,'r:', 'LineWidth',2);
-    plot(src_info_pred_res.xs+1,src_info_pred_res.ys,'r-.', 'LineWidth',4);
+    plot(src_info_pred_res.xs,src_info_pred_res.ys,'m-.', 'LineWidth',4);
     plot(JCP_src_pred.xs, JCP_src_pred.ys, 'g:', 'LineWidth', 2);
     plot(JCP_src_ref.xs, JCP_src_ref.ys, 'b-.', 'LineWidth', 2);
     plot(0, 0, 'r*');
