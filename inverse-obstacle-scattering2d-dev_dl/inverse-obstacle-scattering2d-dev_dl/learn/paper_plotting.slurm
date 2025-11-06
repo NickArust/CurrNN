@@ -19,7 +19,7 @@ conda activate myenv
 matlab -nodisplay -nosplash -nodesktop -r "\
     run('startup.m'); \
     S = load('src_info.mat'); \
-    for_plotting('data/ps/star10_kh9_50_10_n48_600_noise0/model_2_556/',0,0,S.src_info); \
+    for_plotting('data/ps/star10_kh9_10_10_n48_1000_noise0/model_2_60/',0,0,S.src_info); \
     exit;"
 
 conda deactivate

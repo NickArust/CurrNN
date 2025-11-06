@@ -2,8 +2,13 @@
 % data is either generated randomly in this script or read from pred.mat
 function all_errors = nicks_inverse(model_path, noise_lvl, k_idx, JCP_src)
 close all
-clearvars -except model_path noise_lvl k_idx JCP_src
+clearvars -except model_path noise_lvl k_idx JCP_src 
+coefs = load('coef.mat','coef')
+size(coefs)
 
+coefs = coefs.coef
+
+size(coefs)
 
 JCP_src_pred = JCP_src{2}
 JCP_src_ref = JCP_src{3}
@@ -79,7 +84,6 @@ sensor_info.t_dir = t_dir_grid;
 
 if strcmp(data_type, 'random') || strcmp(data_type, 'nn')
     rng(noise_lvl*ndata)
-    coef = sample_fc(cfg, 1);
     % coefs for the figures
     % nc=5, k=5
 %      coef = [1.00647342205048	0.00869796052575111	-0.0303471498191357   0.000751996121834964	0.0479891784489155	-0.0489483885467052     -0.0330795720219612	-0.0122160883620381	-0.0566566064953804     -0.0533075556159020	0.0667197480797768];
@@ -109,8 +113,7 @@ if strcmp(data_type, 'random') || strcmp(data_type, 'nn')
 
     rng('shuffle')
     tweak_noise = 0.025 * randn(size(c));
-    coef = tweak_noise + c;
-    coef = JCP_src{1}
+    coef = coefs
     % nc=20, k=30
 %     coef = [1.13417851924896	0.0319831594824791	0.00969072338193655
 %     0.0138962203636765	0.0147123169153929	-0.0254861395806074
@@ -299,15 +302,15 @@ elseif strcmp(data_type, 'nn_stored') || strcmp(data_type, 'nn')
         save(strcat(model_path, '/inverse/inverse' ,num2str(pred_idx) ,'.mat'), "coef", "coef_pred", ...
         "inverse_result", "err_Chamfer", "err_l2", "err_l2_refined_orig")
     end
-    plot(src_info_pred.xs,src_info_pred.ys,'r:', 'LineWidth',2);
-    plot(src_info_pred_res.xs,src_info_pred_res.ys,'m-.', 'LineWidth',4);
     plot(JCP_src_pred.xs, JCP_src_pred.ys, 'g:', 'LineWidth', 2);
     plot(JCP_src_ref.xs, JCP_src_ref.ys, 'b-.', 'LineWidth', 2);
+    plot(src_info_pred.xs,src_info_pred.ys,'r:', 'LineWidth',2);
+    plot(src_info_pred_res.xs,src_info_pred_res.ys,'m-.', 'LineWidth',3);
     plot(0, 0, 'r*');
     if test_origin_alg
         legend('true boundary', 'boundary solved by default init', 'boundary predicted by nn', 'boundary solved by pred init', '')
     else
-        legend('true boundary', 'boundary predicted by CurrNN', 'boundary solved by CurrNN', 'boundary predicited by nn', 'boundary solved by nn')
+        legend('true boundary',  'boundary predicited by nn', 'boundary solved by nn', 'boundary predicted by CurrNN', 'boundary solved by CurrNN')
     end
     w = 9;
     h = 8;
