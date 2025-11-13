@@ -27,6 +27,6 @@ conda activate myenv
 module load matlab
 
 # Ensure path is correctly set, compile C files, and run MATLAB scripts
-matlab -nodisplay -nosplash -nodesktop -r  "run('only_change_deltak.m'); exit;"
+matlab -nodisplay -nosplash -nodesktop -r  "run('make_boxplots_jcp.m'); exit;"
 
 conda deactivate
