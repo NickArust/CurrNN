@@ -34,7 +34,7 @@ for et = 1:nTypes
     boxplot(data, 'Labels', arrayfun(@(x) sprintf('%.2f', x), noise_levels, 'UniformOutput', false));
     xlabel('Noise Level');
     ylabel('Error');
-    title(sprintf('Error Type %d', et));
+    title(sprintf('Refined Chamfer Error', et));
     grid on;
 
     % optional: save figure

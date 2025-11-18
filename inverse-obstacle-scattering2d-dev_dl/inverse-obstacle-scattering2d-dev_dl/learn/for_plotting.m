@@ -306,11 +306,11 @@ elseif strcmp(data_type, 'nn_stored') || strcmp(data_type, 'nn')
     plot(JCP_src_ref.xs, JCP_src_ref.ys, 'b-.', 'LineWidth', 2);
     plot(src_info_pred.xs,src_info_pred.ys,'r:', 'LineWidth',2);
     plot(src_info_pred_res.xs,src_info_pred_res.ys,'m-.', 'LineWidth',3);
-    plot(0, 0, 'r*');
+   % plot(0, 0, 'r*');
     if test_origin_alg
         legend('true boundary', 'boundary solved by default init', 'boundary predicted by nn', 'boundary solved by pred init', '')
     else
-        legend('true boundary',  'boundary predicited by nn', 'boundary solved by nn', 'boundary predicted by CurrNN', 'boundary solved by CurrNN')
+        legend('true boundary',  'boundary predicited by nn', 'boundary solved by nn', 'boundary predicted by ContNN', 'boundary solved by ContNN')
     end
     w = 9;
     h = 8;

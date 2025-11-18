@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #SBATCH --job-name=inverse_wrapper
-#SBATCH --output=logs/ps_inv/inv_%a.out
-#SBATCH --error=logs/ps_inv/inv_%a.err
-#SBATCH --time=00:15:00
+#SBATCH --output=logs/ps_inv/inv_%j.out
+#SBATCH --error=logs/ps_inv/inv_%j.err
+#SBATCH --time=01:15:00
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=16G
 #SBATCH --mail-type=END,FAIL
@@ -18,7 +18,7 @@ conda activate myenv
 # pass it into MATLAB as a function argument
 matlab -nodisplay -nosplash -nodesktop -r "\
     run('startup.m'); \
-    S = load('src_info.mat'); \
+    S = load('src_info_2.mat'); \
     for_plotting('data/ps/star10_kh9_10_10_n48_1000_noise0/model_2_60/',0,0,S.src_info); \
     exit;"
 
