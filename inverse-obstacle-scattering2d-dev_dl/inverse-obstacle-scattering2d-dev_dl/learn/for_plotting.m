@@ -319,7 +319,7 @@ elseif strcmp(data_type, 'nn_stored') || strcmp(data_type, 'nn')
     set(gcf, 'PaperPositionMode', 'manual');
     set(gcf, 'PaperPosition', [0 0 w h]);
     set(gcf, 'renderer', 'painters');
-    fig_path = strcat(model_path ,'/figs/with_JCP_nc' ,int2str(nc) ,'_kh', num2str(kh), '_' , int2str(noise_lvl*100), '_' ,int2str(k_idx) ,'.pdf')
+    fig_path = strcat(model_path ,'/figs/with_JCP_nc' ,int2str(nc) ,'_kh', num2str(kh), '_' , int2str(noise_lvl*100), '_2' ,int2str(k_idx) ,'.pdf')
     print(gcf, '-dpdf', fig_path);
 
     all_errors = [err_Chamfer, err_l2, err_l2_refined]
