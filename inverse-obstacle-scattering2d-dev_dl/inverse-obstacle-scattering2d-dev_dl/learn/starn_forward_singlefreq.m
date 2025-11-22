@@ -1,9 +1,9 @@
 % This script generates the data for a star-shaped domain, for a fixed
 % number of sensors and incident directions where data is available for all
 % sensors at each incident direction
-function starn_forward_singlefreq(mat_id, cfg_path)
+function starn_forward_singlefreq(mat_id)
 close all
-clearvars -except mat_id cfg_path
+clearvars -except mat_id
 addpath('./REU')
 tic
 %{
@@ -19,6 +19,8 @@ else
     num2str(mat_id) ' and using config file: ' cfg_path '\n']);
 end
 %}
+
+cfg_path = './configs/nc20.json'
 data_prefix = '';
 cfg_str = fileread(cfg_path)
 cfg = jsondecode(cfg_str);
