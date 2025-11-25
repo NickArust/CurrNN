@@ -25,6 +25,34 @@ data_prefix = '';
 cfg_str = fileread(cfg_path)
 cfg = jsondecode(cfg_str);
 
+
+% --- Parallel sanity check ---
+pool = gcp('nocreate');
+if isempty(pool)
+    pool = parpool;  % will use your default profile (Processes)
+end
+fprintf('Parallel pool has %d workers, type: %s\n', ...
+        pool.NumWorkers, pool.Cluster.Type);
+
+% simple parfor test: each iteration records its worker ID
+testN = min(4 * pool.NumWorkers, 64);  % don't go crazy
+wid   = zeros(1, testN);
+
+parfor k = 1:testN
+    t = getCurrentTask();
+    if ~isempty(t)
+        wid(k) = t.ID;
+    else
+        wid(k) = 0;  % should basically never happen inside parfor
+    end
+end
+
+fprintf('parfor test completed, unique worker IDs used: %s\n', ...
+        mat2str(unique(wid)));
+% --- End parallel sanity check ---
+
+
+
 ndata = cfg.ndata;
 nvalid = cfg.nvalid;
 % max number of wiggles
