@@ -3,9 +3,9 @@
 #SBATCH --job-name=gen_data       # Job name
 #SBATCH --output=logs/gen_data/gen_data_%j.out  # Output file. %j expands to job ID
 #SBATCH --error=logs/gen_data/gen_data_%j.err   # Error file. %j expands to job ID
-#SBATCH --time=12:30:00  # Time limit hrs:min:sec
-#SBATCH --ntasks=32
-#SBATCH --cpus-per-task=2          # Number of CPU cores per task
+#SBATCH --time=48:30:00  # Time limit hrs:min:sec
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=32          # Number of CPU cores per task
 #SBATCH --mem=64G                  # Total memory limit
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=ni406436@ucf.edu
