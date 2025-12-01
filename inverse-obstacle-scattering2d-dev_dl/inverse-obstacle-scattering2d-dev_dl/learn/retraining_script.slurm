@@ -32,8 +32,8 @@ python --version
 # 3) Train
 ###############################################################################
 python train.py \
-    --dirname ./data/star10_kh6_40_10_n48_2000_noise0\
-    --model_name oneHalf_test
+    --dirname ./data/star10_kh9_10_10_n48_2000_noise0\
+    --model_name test
 
 ###############################################################################
 # 4) Example: Retrain/fine-tune if needed

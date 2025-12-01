@@ -50,9 +50,9 @@ def parse_args():
     parser.add_argument("--retrain", default=None, type=str) #format: test/model_100.pt
     parser.add_argument("--ndata_train", default=None, type=int)
     parser.add_argument("--cfg_by_nc", action='store_true') #default False
-    parser.add_argument("--epochs", default=None, type=int)
-    parser.add_argument("--save-every-nepoch", default=None, type=int)
-    parser.add_argument("--kh-start", default=None, type=int)
+    parser.add_argument("--epochs", default=1001, type=int)
+    parser.add_argument("--save-every-nepoch", default=91, type=int)
+    parser.add_argument("--kh-start", default=9, type=int)
    
     args = parser.parse_args()
     if args.retrain:

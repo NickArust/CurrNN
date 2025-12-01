@@ -70,7 +70,7 @@ expr = strrep(expr, '_ ', '_');  % remove accidental space
     % errArray is 1 x 5 x 100 x 4
     % We want, for each noise (dim2) and error type (dim4), count of iterations (dim3)
     % where error < 0.01.
-    mask = (errArray < 0.05);    % logical, same size
+    mask = (errArray < 1);    % logical, same size
 
     % Sum along the iteration dimension (3rd)
     % Result: 1 x 5 x 1 x 4 -> squeeze to 5 x 4
@@ -104,7 +104,18 @@ results = results(valid);
 % ---- Example of how to inspect results ----
 for k = 1:numel(results)
     fprintf('\nFile: %s\n', results(k).filename);
-    fprintf('Counts of iterations with error < 5%% (rows = noise level 1..5, cols = error type 1..4):\n');
+    fprintf('Counts of iterations with error < 1%% (rows = noise level 1..5, cols = error type 1..4):\n');
     disp(results(k).counts_below_1pct);
 end
+fid = fopen('results_summary.txt','w');
+
+for k = 1:numel(results)
+    fprintf(fid, '\nFile: %s\n', results(k).filename);
+    fprintf(fid, 'Counts of iterations with error < 1%% (rows = noise level 1..5, cols = error type 1..4):\n');
+
+    % Write the matrix row-by-row
+    fprintf(fid, '%d %d %d %d\n', results(k).counts_below_1pct.');
+end
+
+fclose(fid);
 

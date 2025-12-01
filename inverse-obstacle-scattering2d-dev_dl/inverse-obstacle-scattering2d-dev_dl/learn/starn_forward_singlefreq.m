@@ -20,7 +20,7 @@ else
 end
 %}
 
-cfg_path = './configs/nc20.json'
+cfg_path = './configs/nc10.json'
 data_prefix = '';
 cfg_str = fileread(cfg_path)
 cfg = jsondecode(cfg_str);
