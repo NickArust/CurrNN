@@ -338,10 +338,10 @@ def main():
 
 if __name__ == '__main__':
   
-    
+        
+    print("Hi") 
     main()  # Call the main function that you want to profile
 
 
 
 
-    
