@@ -1,35 +1,45 @@
 #!/bin/bash
 
-#SBATCH --job-name=gen_data_10      # Job name
-#SBATCH --output=logs/gen_data/gen_data_%j.out  # Output file. %j expands to job ID
-#SBATCH --error=logs/gen_data/gen_data_%j.err   # Error file. %j expands to job ID
-#SBATCH --time=12:30:00  # Time limit hrs:min:sec
+#SBATCH --job-name=gen_data_array     # Job name
+#SBATCH --array=1-4                   # CRITICAL: Create 4 jobs (IDs 1, 2, 3, 4)
+#SBATCH --output=logs/gen_data/job_%A_%a.out  # %A=Job ID, %a=Array ID (e.g., job_123_1.out)
+#SBATCH --error=logs/gen_data/job_%A_%a.err
+#SBATCH --time=36:00:00               # Increased to 36 hours (Safety margin for ~28hr runtime)
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=32          # Number of CPU cores per task
-#SBATCH --mem=32G                  # Total memory limit
+#SBATCH --cpus-per-task=17            # 16 Workers + 1 Controller
+#SBATCH --mem=32G                     # 32GB RAM is plenty
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=ni406436@ucf.edu
 
 ###############################################################################
-# 1) Load any necessary modules
+# 1) Load Modules & Cleanup
 ###############################################################################
 module load anaconda/anaconda-2023.09
+module load matlab
+
+# Clean up stale MATLAB locks (Critical for Lustre)
+rm -rf ~/.MathWorks/ServiceHost
+rm -rf ~/.matlab/local_cluster_jobs
+
+# Explicit unset
+unset MW_DISABLE_SERVICE_HOST
 
 ###############################################################################
-# 2) Move into your working directory & activate your conda environment
+# 2) Environment Setup
 ###############################################################################
 cd /home/karustamyan/CurrNN_ISP/inverse-obstacle-scattering2d-dev_dl/inverse-obstacle-scattering2d-dev_dl/learn
 
-# Activate the environment we created. Make sure this environment is created
-# (Option A from above) so that it already exists.
+# Activate environment
 conda activate myenv
 
+###############################################################################
+# 3) Run MATLAB with Array ID
+###############################################################################
+# We pass ${SLURM_ARRAY_TASK_ID} into the function.
+# This variable will be 1 for the first job, 2 for the second, etc.
 
-module load matlab
+echo "Starting Job Array Task ID: ${SLURM_ARRAY_TASK_ID}"
 
-export MW_DISABLE_SERVICE_HOST=1
-
-# Ensure path is correctly set, compile C files, and run MATLAB scripts
-matlab -nodisplay -nosplash -nodesktop -r  "run('starn_forward_singlefreq.m'); exit;"
+matlab -nodisplay -nosplash -nodesktop -r "startup; starn_forward_singlefreq_edited(${SLURM_ARRAY_TASK_ID}); exit;"
 
 conda deactivate
