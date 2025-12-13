@@ -54,6 +54,8 @@ def parse_args():
     parser.add_argument("--save-every-nepoch", default=91, type=int)
     parser.add_argument("--kh-start", default=9, type=int)
    
+    parser.add_argument("--dk", default=1, type=int)
+   
     args = parser.parse_args()
     if args.retrain:
         old_model_name = args.retrain[:args.retrain.find('/' or "\\")]
@@ -242,10 +244,9 @@ def main():
     epoch = args.epochs
     start_kh = args.kh_start
     print("start_kh: ", start_kh)
-    
+    dk = train_cfg["dk"]
+    print("dk = " + str(dk))
     def train(model, device, train_loader, optimizer, epoch, scheduler, model_dir):
-        dk = 0.1
-        start_kh = 8
         n_k = int(round((kh - start_kh) / dk)) + 1  # Should end up = 6 for [9.0..10.0..0.2]
         print("n_k: ", n_k)
         k = 0                 # integer index for data slicing

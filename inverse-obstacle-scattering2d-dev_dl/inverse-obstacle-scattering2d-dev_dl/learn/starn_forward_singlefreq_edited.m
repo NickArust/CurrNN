@@ -175,5 +175,5 @@ end
 
 % Helper function to allow saving inside parfor
 function par_save(fname, coefs, uscat)
-    save(fname, 'coefs', 'uscat');
+    save(fname, 'coefs', 'uscat', '-v7.3');
 end
