@@ -4,7 +4,7 @@
 #SBATCH --error=logs/chunk_train/train_%j.err
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=32G
-#SBATCH --time=2:30:00
+#SBATCH --time=7-12:30:00
 #SBATCH --gres=gpu:1
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=ni406436@ucf.edu
@@ -43,10 +43,10 @@ python --version
 DATA_DIR="./data/star20_kh1_100_30_n100_80000_noise0"
 MODEL_NAME="test"
 
-EPOCHS_PER_K=400
+EPOCHS_PER_K=10
 
 K_START=0
-K_END=4
+K_END=29
 
 CHUNK_FILES=2
 NUM_WORKERS=0

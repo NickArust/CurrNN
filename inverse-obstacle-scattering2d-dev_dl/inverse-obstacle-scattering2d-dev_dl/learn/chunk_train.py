@@ -90,15 +90,14 @@ def _decode_h5py_complex(ds):
             return arr["real"] + 1j * arr["imag"]
     return arr
 
-
-def read_train_mat_v73_k_slice(path: str, k: int):
+def read_train_mat_v73_k_slice(path: str, k: int, nk_expected: int, n_per_file_expected: int):
     """
-    Reads ONLY what we need from a v7.3 (HDF5) training file:
-      - coefs: (ndata_per_mat, nc)
-      - uscat_k: (ndata_per_mat, 1, n_dir, n_tgt)  complex -> we will take .real later
+    Robust v7.3 reader that extracts ONLY the k-slice, regardless of HDF5 dimension order.
 
-    IMPORTANT: MATLAB v7.3 dimension order can appear reversed in h5py.
-    We handle common cases robustly below.
+    Returns:
+      coefs:   (N, nc)
+      uscat_k: (N, 1, H, W) complex
+      timings: dict
     """
     t0 = time.time()
     with h5py.File(path, "r") as f:
@@ -107,83 +106,66 @@ def read_train_mat_v73_k_slice(path: str, k: int):
         coefs = f["coefs"][()]
         t_coefs = time.time()
 
-        # Read only k slice from uscat.
-        # Expected MATLAB layout: uscat(local_idx, ik, idir, itgt) -> (N, nk, n_dir, n_tgt)
-        # In h5py it can appear transposed; we’ll fix after read.
+        # Fix coefs to (N, nc)
+        # Could be (N, nc) or (nc, N)
+        if coefs.ndim != 2:
+            raise ValueError(f"Unexpected coefs ndim={coefs.ndim} in {path}")
+        if coefs.shape[0] == n_per_file_expected:
+            N = coefs.shape[0]
+            # already (N, nc)
+        elif coefs.shape[1] == n_per_file_expected:
+            coefs = coefs.T
+            N = coefs.shape[0]
+        else:
+            raise ValueError(f"Cannot determine N from coefs shape {coefs.shape} in {path}")
+
         uscat_ds = f["uscat"]
+        shp = uscat_ds.shape
 
-        # Try the most likely direct slice first
-        try:
-            uscat_k = uscat_ds[:, k, :, :]  # could work if stored as (N, nk, n_dir, n_tgt)
-        except Exception:
-            # Fallback: read full and slice later (still works, just slower)
-            uscat_all = uscat_ds[()]
-            uscat_all = _decode_h5py_complex(uscat_all)
-            return coefs, uscat_all[:, k:k+1, :, :], {
-                "t_open": t_open - t0,
-                "t_coefs": t_coefs - t_open,
-                "t_uscat": time.time() - t_coefs,
-                "used_fallback_full_read": True
-            }
+        # Find nk axis (should be unique, e.g. 30)
+        nk_axes = [i for i, d in enumerate(shp) if d == nk_expected]
+        if len(nk_axes) != 1:
+            raise ValueError(f"Expected exactly one nk axis size={nk_expected}, got axes={nk_axes} for uscat shape={shp} in {path}")
+        ax_k = nk_axes[0]
 
-        uscat_k = uscat_k[()]  # materialize slice
+        # Find N axis (per-file sample axis, e.g. 100)
+        n_axes = [i for i, d in enumerate(shp) if d == N]
+        if len(n_axes) < 1:
+            raise ValueError(f"Could not find N axis size={N} in uscat shape={shp} in {path}")
+
+        # If multiple axes equal N (rare), prefer the last one (common MATLAB layout has N last)
+        ax_n = n_axes[-1]
+
+        # Slice only the k plane
+        slc = [slice(None)] * len(shp)
+        slc[ax_k] = k
+        uscat_k = uscat_ds[tuple(slc)]  # now 3D
         t_uscat = time.time()
 
-    # Decode complex if compound dtype
+    # Decode MATLAB complex (compound real/imag)
     uscat_k = _decode_h5py_complex(uscat_k)
 
-    # Now fix dimension order if needed.
-    # We want:
-    #   coefs: (N, nc)
-    #   uscat_k: (N, 1, n_dir, n_tgt)
-    #
-    # coefs from MATLAB was created as (N, nc). In v7.3, h5py sometimes reads it as (nc, N).
-    if coefs.ndim == 2 and coefs.shape[0] != uscat_k.shape[0] and coefs.shape[1] == uscat_k.shape[0]:
-        coefs = coefs.T  # (N, nc)
+    # uscat_k is now 3D, but in some order. Move N axis to the front.
+    # Note: after slicing, the axis indices shift if ax_k < ax_n.
+    # Compute new index of N axis after removing ax_k.
+    ax_n_after = ax_n - 1 if ax_k < ax_n else ax_n
+    uscat_k = np.moveaxis(uscat_k, ax_n_after, 0)  # (N, ?, ?)
 
-    # uscat_k currently could be (N, n_dir, n_tgt) OR some transpose.
-    # Ensure it is (N, n_dir, n_tgt)
-    if uscat_k.ndim == 3:
-        # could be (N, n_dir, n_tgt) already
-        pass
-    elif uscat_k.ndim == 4:
-        # If we somehow got (N,1,n_dir,n_tgt) already, squeeze it
-        if uscat_k.shape[1] == 1:
-            uscat_k = uscat_k[:, 0, :, :]
-        else:
-            # unknown; try to squeeze trivial dims
-            uscat_k = np.squeeze(uscat_k)
-    else:
-        raise ValueError(f"Unexpected uscat_k ndim={uscat_k.ndim} in {path}")
-
-    # If the first dimension is not N, try a transpose heuristic
-    # We expect N to match coefs.shape[0]
-    if uscat_k.shape[0] != coefs.shape[0]:
-        # common HDF5 reversal: (n_tgt, n_dir, nk, N) etc.
-        # for k-slice, common alternative is (n_tgt, n_dir, N) or (n_dir, n_tgt, N)
-        if uscat_k.shape[-1] == coefs.shape[0]:
-            uscat_k = np.transpose(uscat_k, (2, 0, 1))
-        elif uscat_k.shape[-1] == coefs.shape[0] and uscat_k.ndim == 3:
-            uscat_k = np.transpose(uscat_k, (2, 0, 1))
-        elif uscat_k.shape[2] == coefs.shape[0] and uscat_k.ndim == 3:
-            uscat_k = np.transpose(uscat_k, (1, 2, 0))
-        else:
-            raise ValueError(
-                f"Cannot align uscat_k with coefs in {path}. "
-                f"coefs shape {coefs.shape}, uscat_k shape {uscat_k.shape}"
-            )
-
-    # Add the singleton k dimension back: (N,1,n_dir,n_tgt)
+    # Finally add the channel dimension: (N,1,H,W)
+    if uscat_k.ndim != 3:
+        raise ValueError(f"Expected uscat_k to be 3D after moveaxis, got shape {uscat_k.shape} in {path}")
     uscat_k = uscat_k[:, None, :, :]
 
     timings = {
         "t_open": t_open - t0,
         "t_coefs": t_coefs - t_open,
         "t_uscat": t_uscat - t_coefs,
-        "used_fallback_full_read": False
+        "uscat_shape": tuple(shp),
+        "ax_k": ax_k,
+        "ax_n": ax_n,
+        "used_fallback_full_read": False,
     }
     return coefs, uscat_k, timings
-
 
 def save_checkpoint(path, model, optimizer, scheduler, progress: dict):
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -376,7 +358,13 @@ def main():
                 # Read only needed k-slice from each file
                 for fp in file_list:
                     t_file0 = time.time()
-                    coefs_i, uscat_k_i, tinfo = read_train_mat_v73_k_slice(fp, k)
+                    coefs_i, uscat_k_i, tinfo = read_train_mat_v73_k_slice(
+                        fp,
+                        k,
+                        nk_expected=nk,                 # from tgt_valid.shape[1]
+                        n_per_file_expected=ndata_per_mat  # from data_cfg["ndata_per_mat"]
+                    )
+
                     t_file1 = time.time()
 
                     t_open_sum += tinfo["t_open"]
@@ -393,18 +381,18 @@ def main():
                     # Convnet input: real part, normalize
                     x_i = uscat_k_i.real  # (N,1,H,W)
                     x_i = ((x_i - mean) / std).astype(np_dtype)
-
+                   #  logger.info("DEBUG x_i shape after slice / normalize %s", x_i.shape)
                     y_i = coefs_i.astype(np_dtype)
 
                     xs.append(x_i)
                     ys.append(y_i)
-
-                    logger.info(
-                        "k=%d e=%d chunk=%d loaded %s in %.2fs (open %.2fs, coefs %.2fs, uscat %.2fs)%s",
-                        k, e, chunk_idx, os.path.basename(fp), (t_file1 - t_file0),
-                        tinfo["t_open"], tinfo["t_coefs"], tinfo["t_uscat"],
-                        " [FALLBACK FULL READ]" if tinfo["used_fallback_full_read"] else ""
-                    )
+                    if chunk_idx < 1:
+                      logger.info(
+                          "k=%d e=%d chunk=%d loaded %s in %.2fs (open %.2fs, coefs %.2fs, uscat %.2fs)%s",
+                          k, e, chunk_idx, os.path.basename(fp), (t_file1 - t_file0),
+                          tinfo["t_open"], tinfo["t_coefs"], tinfo["t_uscat"],
+                          " [FALLBACK FULL READ]" if tinfo["used_fallback_full_read"] else ""
+                      )
 
                 t_stack0 = time.time()
                 x = np.vstack(xs)
@@ -432,7 +420,9 @@ def main():
                 for xb, yb in loader:
                     xb = xb.to(device).type(data_type)
                     yb = yb.to(device).type(data_type)
-
+                    # if chunk_idx == 0 and e == 0:
+                       # logger.info("DEBUG xb shape: %s", tuple(xb.shape))
+                        # logger.info("DEBUG fc1 expects in_features=%d", model.fc1.in_features)
                     optimizer.zero_grad()
                     pred = model(xb)
                     loss = loss_fn(pred, yb)
@@ -444,17 +434,13 @@ def main():
                     progress["global_step"] += 1
 
                 t_train = time.time()
-
-                logger.info(
-                    "k=%d e=%d chunk=%d timings: open=%.2fs coefs=%.2fs uscat=%.2fs stack=%.2fs build=%.2fs train=%.2fs total=%.2fs%s",
-                    k, e, chunk_idx,
-                    t_open_sum, t_coefs_sum, t_uscat_sum,
-                    (t_stack1 - t_stack0),
-                    (t_build - t_stack1),
-                    (t_train - t_build),
-                    (t_train - t_chunk0),
-                    " [USED FALLBACK FULL READ]" if used_fallback else ""
-                )
+                if chunk_idx == 0:
+                     logger.info(
+                        "k=%d e=%d chunk=%d loaded %s in %.2fs (open %.2fs, coefs %.2fs, uscat %.2fs) uscat_shape=%s ax_k=%d ax_n=%d",
+                        k, e, chunk_idx, os.path.basename(fp), (t_file1 - t_file0),
+                        tinfo["t_open"], tinfo["t_coefs"], tinfo["t_uscat"],
+                        tinfo["uscat_shape"], tinfo["ax_k"], tinfo["ax_n"]
+                    )
 
                 del dataset, loader, x, y, xs, ys, uscat_k_i, coefs_i
                 if torch.cuda.is_available():
@@ -486,7 +472,7 @@ def main():
 
             if args.save_every_epochs > 0 and (e % args.save_every_epochs == 0):
                 progress["k"] = k
-                progress["epoch_in_k"] = e
+                progress["epoch_in_k"] = e+1
                 save_checkpoint(
                     os.path.join(model_dir, "checkpoints", "ckpt_latest.pt"),
                     model, optimizer, scheduler, progress
