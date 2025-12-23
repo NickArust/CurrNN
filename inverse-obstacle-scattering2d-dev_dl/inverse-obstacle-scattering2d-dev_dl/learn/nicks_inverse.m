@@ -4,6 +4,8 @@ function all_errors = nicks_inverse(model_path, noise_lvl, k_idx)
 close all
 clearvars -except model_path noise_lvl k_idx
 
+
+model_path = strcat(model_path, '/test')
 data_type = 'nn'; % 'random' or 'nn_stored' or 'nn';
 partial = false;
 noise_level = noise_lvl;
@@ -26,7 +28,7 @@ elseif strcmp(data_type, 'nn')
     % CAREFUL: need to enter model_path, nc_test, and noise_level manually
     % the model_path should not end with '/'
     % model_path = 'data/star10_kh10_n48_10000/test';
-    nc_test = 10; % use nc in cfg_path if nc_test=0
+    nc_test = 20; % use nc in cfg_path if nc_test=0
     cfg_path = strcat(model_path, '/data_config.json');
     cfg_str = fileread(cfg_path);
     idx = strfind(model_path, '/');
@@ -36,7 +38,7 @@ cfg_str = erase(cfg_str, '\n'); % jsondecode cannot read '\n' (in big data)
 cfg = jsondecode(cfg_str);
 ndata = cfg.ndata;
 n_curv = 50;
-nc = cfg.nc; % max number of wiggles
+nc = cfg.nc % max number of wiggles
 n  = max(300,50*nc);
 kh = cfg.kh; %frequency
 
@@ -106,7 +108,7 @@ if strcmp(data_type, 'random') || strcmp(data_type, 'nn')
 
     rng('shuffle')
     tweak_noise = 0.025 * randn(size(c));
-    coef = tweak_noise + c;
+    coef = tweak_noise + c
 
     % nc=20, k=30
 %     coef = [1.13417851924896	0.0319831594824791	0.00969072338193655
@@ -130,7 +132,7 @@ if strcmp(data_type, 'nn') && nc_test > 0
     if nc_test > nc
         error("nc_test must be less than or equal to nc");
     end
-    coef = reshape(coef,[1,21]);
+    coef = reshape(coef,[1,2*nc + 1]);
     coef = coef .* [ones(1,nc_test+1),zeros(1,nc-nc_test), ones(1,nc_test),zeros(1,nc-nc_test)];
 end
 
@@ -159,7 +161,7 @@ if strcmp(data_type, 'nn')
     %dirname = ['./data/star' int2str(nc) '_kh' int2str(kh) '_n' int2str(n_tgt) '_' int2str(ndata)];
     dirname = model_path
     temp_pred_path = strcat(dirname, '/temp.mat');
-    coefs_all = coef;
+    coefs_all = coef
     uscat_all = reshape(fields.uscat_tgt .* noise, [1,n_dir, n_tgt]);
     save(temp_pred_path, 'coefs_all', 'uscat_all', 'cfg_str');
     % Example path: /home/karustamyan/.conda/envs/myenv/bin/python
@@ -244,7 +246,7 @@ end
 
 
 if strcmp(data_type, 'random')
-    plot(0, 0, 'r*');
+%    plot(0, 0, 'r*');
     if test_origin_alg
         legend('true boundary', 'boundary solved by default init', '')
         model_dir = ['./data/gn/inverse' num2str(nc)];
@@ -298,7 +300,7 @@ elseif strcmp(data_type, 'nn_stored') || strcmp(data_type, 'nn')
     end
     plot(src_info_pred.xs,src_info_pred.ys,'r:', 'LineWidth',2);
     plot(src_info_pred_res.xs,src_info_pred_res.ys,'m-.', 'LineWidth',2);
-    plot(0, 0, 'r*');
+%    plot(0, 0, 'r*');
     if test_origin_alg
         legend('true boundary', 'boundary solved by default init', 'boundary predicted by nn', 'boundary solved by pred init', '')
     else

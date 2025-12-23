@@ -21,7 +21,7 @@ conda activate myenv
 # pass it into MATLAB as a function argument
 matlab -nodisplay -nosplash -nodesktop -r "\
     run('startup.m'); \
-    inverse_wrapper(); \
+    inverse_wrapper2('star20_kh1_100_30_n100_80000_noise0'); \
     exit;"
 
 conda deactivate

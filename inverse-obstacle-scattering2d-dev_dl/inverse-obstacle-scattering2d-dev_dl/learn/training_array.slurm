@@ -1,18 +1,18 @@
 #!/bin/bash
 #SBATCH --job-name=ml_train
-#SBATCH --output=logs/ps_training/train_%a.out
-#SBATCH --error=logs/ps_training/train_%a.err
+#SBATCH --output=logs/ps_training/re_train_%a.out
+#SBATCH --error=logs/ps_training/re_train_%a.err
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=32G
 #SBATCH --time=2:30:00
 #SBATCH --gres=gpu:1
-#SBATCH --array=0-599%10    # 800 configs × 3 epoch‐multipliers = 2400
+#SBATCH --array=0-3%10    # 800 configs × 3 epoch‐multipliers = 2400
 
 # 1) build list of your 800 datagen config files
 mapfile -t CONFIGS < <(ls configs/data_gen_ps/nc*_ndata*_ks*_dk*_noise*.json | sort)
 
 # 2) list your epoch‐multipliers
-MUL=(2)
+MUL=(1)
 
 N=${#CONFIGS[@]}        # should be 800
 

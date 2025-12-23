@@ -32,6 +32,7 @@ def parse_args():
 
 def main():
     args, data_cfg, train_cfg = parse_args()
+
     network_type = train_cfg["network_type"]
     if train_cfg["data_type"] == "float32": data_type = torch.float32
     elif train_cfg["data_type"] == "float64": data_type = torch.float64

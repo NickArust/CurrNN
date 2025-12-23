@@ -3,7 +3,7 @@
 #SBATCH --output=logs/chunk_train/train_%j.out
 #SBATCH --error=logs/chunk_train/train_%j.err
 #SBATCH --cpus-per-task=16
-#SBATCH --mem=32G
+#SBATCH --mem=64G
 #SBATCH --time=7-12:30:00
 #SBATCH --gres=gpu:1
 #SBATCH --mail-type=END,FAIL
@@ -43,20 +43,22 @@ python --version
 DATA_DIR="./data/star20_kh1_100_30_n100_80000_noise0"
 MODEL_NAME="test"
 
-EPOCHS_PER_K=10
+EPOCHS_PER_K=80
 
-K_START=0
+K_START=25
 K_END=29
 
-CHUNK_FILES=2
-NUM_WORKERS=0
+CHUNK_FILES=16
+NUM_WORKERS=8
 SAVE_EVERY_EPOCHS=25
+
+
 
 ###############################################################################
 # 3) Auto-resume from latest checkpoint if it exists
 ###############################################################################
 CKPT_PATH="${DATA_DIR}/${MODEL_NAME}/checkpoints/ckpt_latest.pt"
-
+: << 'EOF'
 if [[ -f "$CKPT_PATH" ]]; then
   echo "[INFO] Found checkpoint: $CKPT_PATH"
   echo "[INFO] Resuming training..."
@@ -83,6 +85,34 @@ else
     --num_workers "$NUM_WORKERS" \
     --save_every_epochs "$SAVE_EVERY_EPOCHS" \
     --shuffle_files
+fi
+EOF
+
+
+###############################################################################
+# 3) Targeted retraining (ignore checkpoint progress, keep weights)
+###############################################################################
+
+MODEL_WEIGHTS="${DATA_DIR}/${MODEL_NAME}/model.pt"
+
+if [[ -f "$MODEL_WEIGHTS" ]]; then
+  echo "[INFO] Found trained model weights: $MODEL_WEIGHTS"
+  echo "[INFO] Retraining starting at k=${K_START} ..."
+  python chunk_train2.py \
+    --dirname "$DATA_DIR" \
+    --model_name "$MODEL_NAME" \
+    --retrain "${MODEL_NAME}/model.pt" \
+    --epochs "$EPOCHS_PER_K" \
+    --k_start "$K_START" \
+    --k_end "$K_END" \
+    --chunk_files "$CHUNK_FILES" \
+    --num_workers "$NUM_WORKERS" \
+    --train_cfg_path "${DATA_DIR}/${MODEL_NAME}/train_config.json" \
+    --save_every_epochs "$SAVE_EVERY_EPOCHS" \
+    --shuffle_files
+else
+  echo "[ERROR] No trained model.pt found at $MODEL_WEIGHTS"
+  exit 1
 fi
 
 ###############################################################################

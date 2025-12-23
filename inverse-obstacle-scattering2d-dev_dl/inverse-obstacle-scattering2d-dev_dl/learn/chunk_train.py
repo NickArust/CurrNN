@@ -3,11 +3,9 @@ import json
 import argparse
 import numpy as np
 import time
-import scipy.io
 import h5py
 import torch
 import torch.nn as nn
-import torch.utils.data
 from torch.optim.lr_scheduler import MultiStepLR
 from torch.utils.tensorboard import SummaryWriter
 import logging
@@ -16,6 +14,11 @@ import network
 logging.basicConfig(level=logging.NOTSET)
 logger = logging.getLogger()
 torch.backends.cudnn.benchmark = True
+
+# Optional speed knobs (generally safe for convnets; disable if you dislike TF32)
+if torch.cuda.is_available():
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
 
 
 def parse_args():
@@ -37,8 +40,7 @@ def parse_args():
     parser.add_argument("--chunk_files", default=2, type=int)
     parser.add_argument("--shuffle_files", action="store_true")
 
-    parser.add_argument("--num_workers", default=0, type=int)
-
+    parser.add_argument("--num_workers", default=0, type=int)  # unused now, kept for CLI compat
     parser.add_argument("--save_every_epochs", default=25, type=int)
 
     args = parser.parse_args()
@@ -76,28 +78,20 @@ def list_train_files(train_dir: str):
     return files
 
 
-def _decode_h5py_complex(ds):
-    """
-    ds is a numpy array from h5py reading that may be:
-      - complex already (rare)
-      - compound dtype with fields ('real','imag') (common for MATLAB v7.3 complex)
-    returns complex ndarray
-    """
-    arr = ds
+def _decode_h5py_complex(arr):
+    # MATLAB v7.3 complex often stored as compound dtype with fields real/imag
     if isinstance(arr, np.ndarray) and arr.dtype.fields is not None:
         fields = arr.dtype.fields
         if "real" in fields and "imag" in fields:
             return arr["real"] + 1j * arr["imag"]
     return arr
 
+
 def read_train_mat_v73_k_slice(path: str, k: int, nk_expected: int, n_per_file_expected: int):
     """
-    Robust v7.3 reader that extracts ONLY the k-slice, regardless of HDF5 dimension order.
-
-    Returns:
-      coefs:   (N, nc)
-      uscat_k: (N, 1, H, W) complex
-      timings: dict
+    Reads:
+      coefs -> (N, nc)
+      uscat -> returns ONLY k slice as complex (N,1,H,W)
     """
     t0 = time.time()
     with h5py.File(path, "r") as f:
@@ -106,13 +100,11 @@ def read_train_mat_v73_k_slice(path: str, k: int, nk_expected: int, n_per_file_e
         coefs = f["coefs"][()]
         t_coefs = time.time()
 
-        # Fix coefs to (N, nc)
-        # Could be (N, nc) or (nc, N)
         if coefs.ndim != 2:
             raise ValueError(f"Unexpected coefs ndim={coefs.ndim} in {path}")
+
         if coefs.shape[0] == n_per_file_expected:
             N = coefs.shape[0]
-            # already (N, nc)
         elif coefs.shape[1] == n_per_file_expected:
             coefs = coefs.T
             N = coefs.shape[0]
@@ -122,39 +114,31 @@ def read_train_mat_v73_k_slice(path: str, k: int, nk_expected: int, n_per_file_e
         uscat_ds = f["uscat"]
         shp = uscat_ds.shape
 
-        # Find nk axis (should be unique, e.g. 30)
         nk_axes = [i for i, d in enumerate(shp) if d == nk_expected]
         if len(nk_axes) != 1:
             raise ValueError(f"Expected exactly one nk axis size={nk_expected}, got axes={nk_axes} for uscat shape={shp} in {path}")
         ax_k = nk_axes[0]
 
-        # Find N axis (per-file sample axis, e.g. 100)
         n_axes = [i for i, d in enumerate(shp) if d == N]
         if len(n_axes) < 1:
             raise ValueError(f"Could not find N axis size={N} in uscat shape={shp} in {path}")
+        ax_n = n_axes[-1]  # prefer last
 
-        # If multiple axes equal N (rare), prefer the last one (common MATLAB layout has N last)
-        ax_n = n_axes[-1]
-
-        # Slice only the k plane
         slc = [slice(None)] * len(shp)
         slc[ax_k] = k
         uscat_k = uscat_ds[tuple(slc)]  # now 3D
         t_uscat = time.time()
 
-    # Decode MATLAB complex (compound real/imag)
     uscat_k = _decode_h5py_complex(uscat_k)
 
-    # uscat_k is now 3D, but in some order. Move N axis to the front.
-    # Note: after slicing, the axis indices shift if ax_k < ax_n.
-    # Compute new index of N axis after removing ax_k.
+    # after slicing away ax_k, the N axis index may shift
     ax_n_after = ax_n - 1 if ax_k < ax_n else ax_n
     uscat_k = np.moveaxis(uscat_k, ax_n_after, 0)  # (N, ?, ?)
 
-    # Finally add the channel dimension: (N,1,H,W)
     if uscat_k.ndim != 3:
-        raise ValueError(f"Expected uscat_k to be 3D after moveaxis, got shape {uscat_k.shape} in {path}")
-    uscat_k = uscat_k[:, None, :, :]
+        raise ValueError(f"Expected uscat_k to be 3D, got shape {uscat_k.shape} in {path}")
+
+    uscat_k = uscat_k[:, None, :, :]  # (N,1,H,W)
 
     timings = {
         "t_open": t_open - t0,
@@ -166,6 +150,7 @@ def read_train_mat_v73_k_slice(path: str, k: int, nk_expected: int, n_per_file_e
         "used_fallback_full_read": False,
     }
     return coefs, uscat_k, timings
+
 
 def save_checkpoint(path, model, optimizer, scheduler, progress: dict):
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -186,6 +171,9 @@ def load_checkpoint(path, model, optimizer, scheduler, map_location):
 
 
 def main():
+
+    print(torch.cuda.get_device_name(0))
+
     start_time = time.time()
     args, train_cfg = parse_args()
 
@@ -199,6 +187,7 @@ def main():
         raise ValueError("Unsupported data_type in train_cfg")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    use_cuda = (device.type == "cuda")
 
     logger.info("train data from %s", args.dirname)
     logger.info("model name %s", args.model_name)
@@ -230,7 +219,7 @@ def main():
     mean = float(np.mean(tgt_valid))
     std = float(np.std(tgt_valid))
     logger.info("convnet mean %.8e std %.8e", mean, std)
-    tgt_valid = (tgt_valid - mean) / std
+    tgt_valid = (tgt_valid - mean) / std  # (nvalid, nk, H, W)
 
     nk = int(tgt_valid.shape[1])
     k_start = int(args.k_start)
@@ -260,6 +249,8 @@ def main():
     # Model / optimizer
     # -------------------------
     model = network.ConvNet(data_cfg, train_cfg).to(device).type(data_type)
+    if use_cuda:
+        model = model.to(memory_format=torch.channels_last)
 
     if train_cfg["optimizer"] == "SGD":
         optimizer = torch.optim.SGD(
@@ -275,6 +266,9 @@ def main():
 
     scheduler = MultiStepLR(optimizer, milestones=train_cfg["milestones"], gamma=train_cfg["gamma"])
     loss_fn = nn.MSELoss()
+
+    # AMP scaler (CUDA only)
+    scaler = torch.amp.GradScaler("cuda", enabled=use_cuda)
 
     tgt_valid_t = torch.tensor(tgt_valid, dtype=data_type)
     coefs_val_t = torch.tensor(coefs_val.numpy(), dtype=data_type)
@@ -335,8 +329,17 @@ def main():
     logger.info("Curriculum k: %d..%d | epochs per k-stage: %d", k_start, k_end, args.epochs)
     logger.info("Chunking: %d files/chunk", args.chunk_files)
 
+    bs = int(train_cfg["batch_size"])
+    valid_freq = int(train_cfg["valid_freq"])
+
     for k in range(progress["k"], k_end + 1):
         start_epoch = progress["epoch_in_k"] if k == progress["k"] else 0
+
+        # We'll use these for end-of-k logging (defined no matter what)
+        last_train_loss = None
+        last_val_loss = None
+        last_err_rel = None
+        last_err_abs = None
 
         for e in range(start_epoch, args.epochs):
             stage_files = list(train_files)
@@ -348,12 +351,8 @@ def main():
             epoch_loss_count = 0
 
             for chunk_idx, file_list in iter_chunks(stage_files, args.chunk_files):
-                t_chunk0 = time.time()
-
                 xs = []
                 ys = []
-                t_open_sum = t_coefs_sum = t_uscat_sum = 0.0
-                used_fallback = False
 
                 # Read only needed k-slice from each file
                 for fp in file_list:
@@ -361,16 +360,10 @@ def main():
                     coefs_i, uscat_k_i, tinfo = read_train_mat_v73_k_slice(
                         fp,
                         k,
-                        nk_expected=nk,                 # from tgt_valid.shape[1]
-                        n_per_file_expected=ndata_per_mat  # from data_cfg["ndata_per_mat"]
+                        nk_expected=nk,
+                        n_per_file_expected=ndata_per_mat
                     )
-
                     t_file1 = time.time()
-
-                    t_open_sum += tinfo["t_open"]
-                    t_coefs_sum += tinfo["t_coefs"]
-                    t_uscat_sum += tinfo["t_uscat"]
-                    used_fallback = used_fallback or tinfo["used_fallback_full_read"]
 
                     # Apply partial dir/tgt if desired
                     if train_cfg.get("n_dir_train", 0) > 0:
@@ -378,108 +371,142 @@ def main():
                     if train_cfg.get("n_tgt_train", 0) > 0:
                         uscat_k_i = uscat_k_i[:, :, :, 0:train_cfg["n_tgt_train"]]
 
-                    # Convnet input: real part, normalize
                     x_i = uscat_k_i.real  # (N,1,H,W)
                     x_i = ((x_i - mean) / std).astype(np_dtype)
-                   #  logger.info("DEBUG x_i shape after slice / normalize %s", x_i.shape)
                     y_i = coefs_i.astype(np_dtype)
 
                     xs.append(x_i)
                     ys.append(y_i)
+
                     if chunk_idx < 1:
-                      logger.info(
-                          "k=%d e=%d chunk=%d loaded %s in %.2fs (open %.2fs, coefs %.2fs, uscat %.2fs)%s",
-                          k, e, chunk_idx, os.path.basename(fp), (t_file1 - t_file0),
-                          tinfo["t_open"], tinfo["t_coefs"], tinfo["t_uscat"],
-                          " [FALLBACK FULL READ]" if tinfo["used_fallback_full_read"] else ""
-                      )
+                        logger.info(
+                            "k=%d e=%d chunk=%d loaded %s in %.2fs (open %.2fs, coefs %.2fs, uscat %.2fs)",
+                            k, e, chunk_idx, os.path.basename(fp), (t_file1 - t_file0),
+                            tinfo["t_open"], tinfo["t_coefs"], tinfo["t_uscat"]
+                        )
 
-                t_stack0 = time.time()
-                x = np.vstack(xs)
-                y = np.vstack(ys)
-                t_stack1 = time.time()
+                # Stack chunk to numpy
+                x_np = np.vstack(xs)  # (Nc,1,H,W)
+                y_np = np.vstack(ys)  # (Nc,nc)
 
-                dataset = torch.utils.data.TensorDataset(
-                    torch.from_numpy(x),
-                    torch.from_numpy(y)
-                )
+                # Convert to CPU tensors
+                x_cpu = torch.from_numpy(x_np)
+                y_cpu = torch.from_numpy(y_np)
 
-                loader = torch.utils.data.DataLoader(
-                    dataset,
-                    batch_size=train_cfg["batch_size"],
-                    shuffle=True,
-                    num_workers=args.num_workers,
-                    pin_memory=torch.cuda.is_available(),
-                    persistent_workers=(args.num_workers > 0),
-                )
+                # Manual shuffle once per chunk (fast, simple)
+                perm = torch.randperm(x_cpu.shape[0])
+                x_cpu = x_cpu[perm]
+                y_cpu = y_cpu[perm]
 
-                t_build = time.time()
+                # Pin memory for faster H2D copies
+                if use_cuda:
+                    x_cpu = x_cpu.pin_memory()
+                    y_cpu = y_cpu.pin_memory()
 
-                # Train on this chunk
+                # Train on this chunk: manual batching + AMP + channels_last
                 model.train()
-                for xb, yb in loader:
-                    xb = xb.to(device).type(data_type)
-                    yb = yb.to(device).type(data_type)
-                    # if chunk_idx == 0 and e == 0:
-                       # logger.info("DEBUG xb shape: %s", tuple(xb.shape))
-                        # logger.info("DEBUG fc1 expects in_features=%d", model.fc1.in_features)
-                    optimizer.zero_grad()
-                    pred = model(xb)
-                    loss = loss_fn(pred, yb)
-                    loss.backward()
-                    optimizer.step()
+                n_chunk = x_cpu.shape[0]
+                for i0 in range(0, n_chunk, bs):
+                    xb = x_cpu[i0:i0 + bs]
+                    yb = y_cpu[i0:i0 + bs]
+
+                    xb = xb.to(device, non_blocking=True).type(data_type)
+                    yb = yb.to(device, non_blocking=True).type(data_type)
+
+                    if use_cuda:
+                        xb = xb.to(memory_format=torch.channels_last)
+
+                    optimizer.zero_grad(set_to_none=True)
+
+                    with torch.cuda.amp.autocast(enabled=use_cuda):
+                        pred = model(xb)
+                        loss = loss_fn(pred, yb)
+
+                    scaler.scale(loss).backward()
+                    scaler.step(optimizer)
+                    scaler.update()
 
                     epoch_loss_sum += float(loss.item())
                     epoch_loss_count += 1
                     progress["global_step"] += 1
 
-                t_train = time.time()
-                if chunk_idx == 0:
-                     logger.info(
-                        "k=%d e=%d chunk=%d loaded %s in %.2fs (open %.2fs, coefs %.2fs, uscat %.2fs) uscat_shape=%s ax_k=%d ax_n=%d",
-                        k, e, chunk_idx, os.path.basename(fp), (t_file1 - t_file0),
-                        tinfo["t_open"], tinfo["t_coefs"], tinfo["t_uscat"],
-                        tinfo["uscat_shape"], tinfo["ax_k"], tinfo["ax_n"]
-                    )
+                # Free CPU-side chunk buffers
+                del xs, ys, x_np, y_np, x_cpu, y_cpu, uscat_k_i, coefs_i
 
-                del dataset, loader, x, y, xs, ys, uscat_k_i, coefs_i
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-
+            # step LR once per epoch
             scheduler.step()
 
-            if e % train_cfg["valid_freq"] == 0:
+            # Validation / logging
+            if (e % valid_freq) == 0:
                 model.eval()
                 with torch.no_grad():
-                    coef_pred = model(tgt_valid_t[:, k:k + 1, :, :].to(device))
-                    loss_train = epoch_loss_sum / max(epoch_loss_count, 1)
-                    loss_val = loss_fn(coef_pred, coefs_val_t.to(device)).item()
+                    xb_val = tgt_valid_t[:, k:k + 1, :, :].to(device).type(data_type)
+                    if use_cuda:
+                        xb_val = xb_val.to(memory_format=torch.channels_last)
 
-                    diff = torch.norm(coef_pred.cpu() - coefs_val_t, dim=1).cpu().numpy()
+                    coef_pred = model(xb_val)
+                    loss_train = epoch_loss_sum / max(epoch_loss_count, 1)
+                    loss_val = loss_fn(coef_pred, coefs_val_t.to(device).type(data_type)).item()
+
+                    diff = torch.norm(coef_pred.detach().cpu() - coefs_val_t, dim=1).cpu().numpy()
                     err_rel = float(np.mean(diff / norm_coef))
                     err_abs = float(np.mean(diff))
 
                     progress["best_rel"] = min(progress["best_rel"], err_rel)
                     progress["best_abs"] = min(progress["best_abs"], err_abs)
 
+                    last_train_loss = loss_train
+                    last_val_loss = loss_val
+                    last_err_rel = err_rel
+                    last_err_abs = err_abs
+
                     logger.info(
                         "k=%2d e=%4d train_loss=%.6f val_loss=%.6f rel=%.4f abs=%.4f time=%.1fs",
                         k, e, loss_train, loss_val, err_rel, err_abs, time.time() - start_time
                     )
-
                     writer.add_scalar("loss_train", loss_train, progress["global_step"])
                     writer.add_scalar("loss_val", loss_val, progress["global_step"])
 
+            # checkpoint (epoch-level)
             if args.save_every_epochs > 0 and (e % args.save_every_epochs == 0):
                 progress["k"] = k
-                progress["epoch_in_k"] = e+1
+                progress["epoch_in_k"] = e + 1
                 save_checkpoint(
                     os.path.join(model_dir, "checkpoints", "ckpt_latest.pt"),
                     model, optimizer, scheduler, progress
                 )
 
+        # ---- end of this k-stage ----
+        # Always compute a final validation for end-of-k logging (so vars are defined)
+        model.eval()
+        with torch.no_grad():
+            xb_val = tgt_valid_t[:, k:k + 1, :, :].to(device).type(data_type)
+            if use_cuda:
+                xb_val = xb_val.to(memory_format=torch.channels_last)
+
+            coef_pred = model(xb_val)
+            # end-of-k "train loss" we report as last epoch's average (if available)
+            # if last_train_loss is None, compute from last epoch stats (still in scope) safely
+            if last_train_loss is None:
+                last_train_loss = epoch_loss_sum / max(epoch_loss_count, 1)
+
+            last_val_loss = loss_fn(coef_pred, coefs_val_t.to(device).type(data_type)).item()
+
+            diff = torch.norm(coef_pred.detach().cpu() - coefs_val_t, dim=1).cpu().numpy()
+            last_err_rel = float(np.mean(diff / norm_coef))
+            last_err_abs = float(np.mean(diff))
+
         torch.save(model.state_dict(), os.path.join(model_dir, f"model_k{k}.pt"))
 
+        # FIXED: loss_vall typo + ensure values are always defined
+        logger.info(
+            "END-K k=%2d last_epoch=%4d train_loss=%.6f val_loss=%.6f rel=%.4f abs=%.4f time=%.1fs",
+            k, (args.epochs - 1),
+            float(last_train_loss), float(last_val_loss), float(last_err_rel), float(last_err_abs),
+            time.time() - start_time
+        )
+
+        # move to next k
         progress["k"] = k + 1
         progress["epoch_in_k"] = 0
         save_checkpoint(
@@ -489,24 +516,19 @@ def main():
 
     logger.info("DONE. Best rel %.4f best abs %.4f", progress["best_rel"], progress["best_abs"])
 
+    # final validation prediction at last k
     last_k = k_end
     model.eval()
     with torch.no_grad():
-        coef_pred = model(tgt_valid_t[:, last_k:last_k + 1, :, :].to(device))
+        xb_val = tgt_valid_t[:, last_k:last_k + 1, :, :].to(device).type(data_type)
+        if use_cuda:
+            xb_val = xb_val.to(memory_format=torch.channels_last)
+        coef_pred = model(xb_val)
 
-    scipy.io.savemat(
-        os.path.join(args.dirname, f"valid_predby_{args.model_name}.mat"),
-        {
-            "coef_val": coefs_val_t.cpu().numpy().astype("float64"),
-            "coef_pred": coef_pred.detach().cpu().numpy().astype("float64"),
-            "cfg_str": data_cfg
-        }
-    )
-
+    # save final weights
     torch.save(model.state_dict(), os.path.join(model_dir, "model.pt"))
     writer.close()
 
 
 if __name__ == "__main__":
     main()
-

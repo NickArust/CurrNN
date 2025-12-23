@@ -219,7 +219,7 @@ def main():
         del u_fft
     
     kh = np.shape(data_to_train)[1]
-    print(kh)
+    print("kh", kh)
     
   
 
