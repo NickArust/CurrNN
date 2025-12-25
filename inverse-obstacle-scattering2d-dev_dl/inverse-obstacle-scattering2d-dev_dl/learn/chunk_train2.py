@@ -392,6 +392,7 @@ def main():
         save_checkpoint(os.path.join(model_dir, "checkpoints", "ckpt_latest.pt"), model, optimizer, scheduler, progress)
 
     logger.info("DONE")
+    torch.save(model.state_dict(), os.path.join(model_dir, "model.pt"))
     writer.close()
 
 if __name__ == "__main__":
