@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=CurrNN_Part2
-#SBATCH --output=logs/chunk_train/part2_%j.out
-#SBATCH --error=logs/chunk_train/part2_%j.err
+#SBATCH --output=logs/chunk_train/unbalanced_part2_%j.out
+#SBATCH --error=logs/chunk_train/unbalanced_part2_%j.err
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
 #SBATCH --time=5-00:00:00
@@ -26,12 +26,12 @@ conda activate myenv
 set -u
 
 # --- SETTINGS ---
-PYTHON_SCRIPT="chunk_train_new_loss.py"
+PYTHON_SCRIPT="chunk_train2.py"
 DATA_DIR="./data/star20_kh1_100_30_n100_80000_noise0"
-MODEL_NAME="new_loss" # Must match Part 1
+MODEL_NAME="unbalanced" # Must match Part 1
 
 EPOCHS_PER_K=70
-K_START=15       # Second Half
+K_START=19       # Second Half
 K_END=29
 
 CHUNK_FILES=16

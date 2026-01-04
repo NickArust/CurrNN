@@ -19,13 +19,45 @@ torch.backends.cudnn.benchmark = True
 if torch.cuda.is_available():
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.backends.cudnn.allow_tf32 = True
-def get_epochs_for_k(k):
-    if k < 10:
-        return 40
-    elif k < 20:
-        return 70
-    else:
-        return 100
+# --- CUSTOM LOSS FUNCTION ---
+class SpectralSobolevLoss(nn.Module):
+    def __init__(self, num_coeffs, lambda_deriv=0.1, device='cpu'):
+        """
+        Args:
+            num_coeffs (int): Total number of coefficients (2*nc + 1)
+            lambda_deriv (float): Weight for the derivative penalty. 
+                                  0.1 is a good starting point. 
+                                  Increase to 1.0 if it still ignores wiggles.
+        """
+        super().__init__()
+        self.lambda_deriv = lambda_deriv
+        
+        # Derive nc. Assumes structure: [c0, c1_cos, c1_sin, c2_cos, c2_sin, ...]
+        nc = (num_coeffs - 1) // 2
+        
+        # Build weights corresponding to frequency k^2 (approximation of 1st derivative)
+        # Indices: 0 (DC) -> 0 weight
+        # Indices: 1,2 (k=1) -> 1^2
+        # Indices: 3,4 (k=2) -> 2^2 ...
+        weights = [0.0]
+        for i in range(1, nc + 1):
+            w = float(i) ** 2
+            weights.extend([w, w])
+            
+        # Register as buffer so it moves to device automatically with the model if needed, 
+        # or we manually handle it.
+        self.weights = torch.tensor(weights, dtype=torch.float32).to(device)
+        
+    def forward(self, pred, target):
+        # 1. Standard MSE (L2 Norm) - "Bulk Shape"
+        mse_loss = torch.mean((pred - target) ** 2)
+        
+        # 2. Weighted MSE (Sobolev Norm) - "Wiggles"
+        # We penalize errors in high frequencies by multiplying by k^2
+        weighted_sq_error = (pred - target) ** 2 * self.weights
+        deriv_loss = torch.mean(weighted_sq_error)
+        
+        return mse_loss + (self.lambda_deriv * deriv_loss)
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dirname", default="./data/star10_kh9_10_10_n48_2000_noise0", type=str)
@@ -245,6 +277,9 @@ def main():
     # -------------------------
     # Model Setup
     # -------------------------
+    # -------------------------
+    # Model Setup
+    # -------------------------
     model = network.ConvNet(data_cfg, train_cfg).to(device).type(data_type)
     if use_cuda:
         model = model.to(memory_format=torch.channels_last)
@@ -255,7 +290,15 @@ def main():
         optimizer = torch.optim.Adam(model.parameters(), lr=train_cfg["lr"])
     
     scheduler = MultiStepLR(optimizer, milestones=train_cfg["milestones"], gamma=train_cfg["gamma"])
-    loss_fn = nn.MSELoss()
+
+    # --- CHANGED: Use SpectralSobolevLoss instead of MSELoss ---
+    # We infer num_coeffs from the validation data shape: (N, num_coeffs)
+    num_coeffs = coefs_val.shape[1] 
+    
+    # Initialize Custom Loss
+    # lambda_deriv=0.1 is a safe start. If the output is still too smooth, try 1.0.
+    loss_fn = SpectralSobolevLoss(num_coeffs=num_coeffs, lambda_deriv=0.1, device=device)
+    logger.info(f"Using SpectralSobolevLoss with lambda_deriv={loss_fn.lambda_deriv}")
     scaler = torch.amp.GradScaler("cuda", enabled=use_cuda)
 
     tgt_valid_t = torch.tensor(tgt_valid, dtype=data_type)
@@ -314,9 +357,8 @@ def main():
             pin_memory=True,
             drop_last=False
         )
-        target_epochs = get_epochs_for_k(k)
-        logger.info(f"Starting stage k={k} with {target_epochs} epochs")
-        for e in range(start_epoch, target_epochs):
+
+        for e in range(start_epoch, args.epochs):
             epoch_loss_sum = 0.0
             epoch_loss_count = 0
             

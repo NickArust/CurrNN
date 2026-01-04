@@ -41,6 +41,7 @@ k_stages = [x['k'] for x in full_run]
 plt.figure(figsize=(12, 6))
 plt.plot(times, val_losses, label='Validation Loss', color='#1f77b4', linewidth=2)
 
+'''
 # Highlight the "Breakthrough" point (Start of k=20)
 breakthrough_index = next((i for i, x in enumerate(full_run) if x['k'] == 20), None)
 if breakthrough_index:
@@ -50,7 +51,7 @@ if breakthrough_index:
 plt.text(times[5], max(val_losses)*0.9, 'Phase 1:\nInitial Descent', color='black', fontsize=10)
 plt.text(times[len(part1)-10], 0.00018, 'Phase 2:\nThe Plateau', color='red', fontsize=10, ha='center')
 plt.text(times[-1], val_losses[-1] + 0.00005, 'Phase 3:\nBreakthrough', color='green', fontsize=10, ha='right')
-
+'''
 # Formatting
 plt.title(f"Full Training Run Analysis (Combined Parts 1 & 2)\nCurrent Best Loss: {min(val_losses):.6f}", fontsize=14)
 plt.xlabel("Training Time (Hours)", fontsize=12)
