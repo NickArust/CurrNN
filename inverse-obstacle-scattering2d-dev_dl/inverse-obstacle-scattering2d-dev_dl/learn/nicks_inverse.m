@@ -5,13 +5,14 @@ close all
 clearvars -except model_path noise_lvl k_idx
 
 
-model_path = strcat(model_path, '/test_full_run')
+model_path = strcat(model_path, '/new_loss')
 data_type = 'nn'; % 'random' or 'nn_stored' or 'nn';
 partial = false;
+
 noise_level = noise_lvl;
 % env_path = readlines('env_path.txt');
 % env_path = env_path(1); % only read the first line
-model_name = 'test_full_run';
+model_name = 'new_loss';
 star_specific = true;
 test_origin_alg = false;
 if strcmp(data_type, 'nn_stored')
@@ -41,7 +42,7 @@ n_curv = 50;
 nc = cfg.nc % max number of wiggles
 n  = max(300,50*nc);
 %kh = cfg.kh %frequency
-kh = 25
+kh = cfg.kh
 % Test obstacle Frechet derivative for Dirichlet problem
 bc = [];
 bc.type = 'Dirichlet';
