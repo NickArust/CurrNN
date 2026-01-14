@@ -3,7 +3,7 @@
 #SBATCH --job-name=inverse_wrapper
 #SBATCH --output=logs/single_inv/inv_%a.out
 #SBATCH --error=logs/single_inv/inv_%a.err
-#SBATCH --time=03:00:00
+#SBATCH --time=06:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --mail-type=END,FAIL

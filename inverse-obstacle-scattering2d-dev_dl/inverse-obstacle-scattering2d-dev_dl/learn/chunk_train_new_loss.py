@@ -297,7 +297,7 @@ def main():
     
     # Initialize Custom Loss
     # lambda_deriv=0.1 is a safe start. If the output is still too smooth, try 1.0.
-    loss_fn = SpectralSobolevLoss(num_coeffs=num_coeffs, lambda_deriv=0.1, device=device)
+    loss_fn = SpectralSobolevLoss(num_coeffs=num_coeffs, lambda_deriv=0, device=device)
     logger.info(f"Using SpectralSobolevLoss with lambda_deriv={loss_fn.lambda_deriv}")
     scaler = torch.amp.GradScaler("cuda", enabled=use_cuda)
 

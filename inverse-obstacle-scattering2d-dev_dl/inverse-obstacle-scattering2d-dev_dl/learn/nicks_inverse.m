@@ -5,14 +5,14 @@ close all
 clearvars -except model_path noise_lvl k_idx
 
 
-model_path = strcat(model_path, '/new_loss')
+model_path = strcat(model_path, '/unbalanced')
 data_type = 'nn'; % 'random' or 'nn_stored' or 'nn';
 partial = false;
 
 noise_level = noise_lvl;
 % env_path = readlines('env_path.txt');
 % env_path = env_path(1); % only read the first line
-model_name = 'new_loss';
+model_name = 'unbalanced';
 star_specific = true;
 test_origin_alg = false;
 if strcmp(data_type, 'nn_stored')
@@ -179,6 +179,8 @@ if strcmp(data_type, 'nn')
     k
     coef_pred = str2num(cmdout(k+32:end))';
     coef_pred
+    
+    
     src_info_pred = geometries.starn(coef_pred,nc,n);
 end
 err_l2 = -1;
