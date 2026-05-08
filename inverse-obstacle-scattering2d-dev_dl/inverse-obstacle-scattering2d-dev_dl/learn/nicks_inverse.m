@@ -12,7 +12,7 @@ partial = false;
 noise_level = noise_lvl;
 % env_path = readlines('env_path.txt');
 % env_path = env_path(1); % only read the first line
-model_name = 'unbalanced';
+model_name = 'new_loss';
 star_specific = true;
 test_origin_alg = false;
 if strcmp(data_type, 'nn_stored')
@@ -157,6 +157,7 @@ fields = rla.compute_fields(kh,src_info_ex,mats,sensor_info,bc,opts);
 
 rng("shuffle")
 noise = 1 + noise_level * rand(n_dir*n_tgt, 1) .* exp(2*pi*1i*rand(n_dir*n_tgt, 1));
+%{
 if strcmp(data_type, 'nn')
     % apply the stored predictor
     %dirname = ['./data/star' int2str(nc) '_kh' int2str(kh) '_n' int2str(n_tgt) '_' int2str(ndata)];
@@ -183,7 +184,11 @@ if strcmp(data_type, 'nn')
     
     src_info_pred = geometries.starn(coef_pred,nc,n);
 end
+%}
+coef_pred = coef + 0.025 * randn(size(coef));
 err_l2 = -1;
+
+src_info_pred = geometries.starn(coef_pred,nc,n);
 if strcmp(data_type, 'nn_stored') || strcmp(data_type, 'nn')
     err_l2 = norm(coef - coef_pred) / norm(coef)
 end
@@ -316,7 +321,7 @@ elseif strcmp(data_type, 'nn_stored') || strcmp(data_type, 'nn')
     set(gcf, 'PaperPositionMode', 'manual');
     set(gcf, 'PaperPosition', [0 0 w h]);
     set(gcf, 'renderer', 'painters');
-    fig_path = strcat(model_path ,'/figs/nc' ,int2str(nc) ,'_kh', num2str(kh), '_' , int2str(noise_lvl*100), '_' ,int2str(k_idx) ,'.pdf')
+    fig_path = strcat(model_path ,'/figs/new_loss_nc' ,int2str(nc) ,'_kh', num2str(kh), '_' , int2str(noise_lvl*100), '_' ,int2str(k_idx) ,'.pdf')
     print(gcf, '-dpdf', fig_path);
 
     all_errors = [err_Chamfer, err_l2, err_l2_refined]

@@ -3,10 +3,10 @@ function inverse_wrapper(path)
 % Extract name from path to use for saving
 	tic
 
-    num_noises = 5;
+    num_noises = 1;
     noise_levels = linspace(0,1,num_noises)
-    
-    num_tweaks = 100;
+    noise_levels = [0]; 
+    num_tweaks = 10;
     tweak_factor = 0.025;
     
     %error_array = zeros(1, num_noises, num_tweaks,5);
