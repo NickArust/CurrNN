@@ -185,8 +185,12 @@ if strcmp(data_type, 'nn')
     src_info_pred = geometries.starn(coef_pred,nc,n);
 end
 %}
-coef_pred = coef + 0.025 * randn(size(coef));
+
+idx_to_change = randi(size(coef))
 err_l2 = -1;
+coef_pred = coef;
+coef_pred(idx_to_change) = coef(idx_to_change)+0.05*rand
+diff = abs(sum(coef_pred-coef))
 
 src_info_pred = geometries.starn(coef_pred,nc,n);
 if strcmp(data_type, 'nn_stored') || strcmp(data_type, 'nn')
