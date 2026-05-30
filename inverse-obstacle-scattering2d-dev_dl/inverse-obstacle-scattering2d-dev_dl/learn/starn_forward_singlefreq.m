@@ -26,10 +26,10 @@ if ~exist('noise_level_input', 'var')
     noise_level = 0.0; % Default fallback
 end
 
-disp(['Running with noise level: ', num2str(noise_level_input)]);
+disp(['Running with noise level: ', num2str(noise_level)]);
 
 % ... Rest of your code using noise_level ...
-cfg_path = './configs/nc10.json'
+cfg_path = './configs/nc20.json'
 data_prefix = '';
 cfg_str = fileread(cfg_path)
 cfg = jsondecode(cfg_str);
@@ -106,7 +106,7 @@ sensor_info.t_dir = t_dir_grid;
 rng(ndata+nvalid)
 coefs_val = sample_fc(cfg, nvalid);
 
-NOISE_LVL = noise_level_input
+NOISE_LVL = noise_level
 dirname = ['./data/star' int2str(nc) '_kh' int2str(start_kh) '_' num2str(dk*100) '_' int2str(kh) '_n' int2str(n_tgt) '_' int2str(ndata) '_noise' num2str(NOISE_LVL*100)]
 if ~strcmp(data_prefix, '')
     dirname = strcat(dirname, '_', data_prefix);
