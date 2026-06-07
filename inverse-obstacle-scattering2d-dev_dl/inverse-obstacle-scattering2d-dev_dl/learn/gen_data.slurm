@@ -3,7 +3,7 @@
 #SBATCH --job-name=n20k15     # Job name
 #SBATCH --output=logs/gen_data/n20k15_%A.out  # %A=Job ID, %a=Array ID (e.g., job_123_1.out)
 #SBATCH --error=logs/gen_data/n20k15_%A.err
-#SBATCH --time=12:00:00               # Increased to 36 hours (Safety margin for ~28hr runtime)
+#SBATCH --time=36:00:00               # Increased to 36 hours (Safety margin for ~28hr runtime)
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=17            # 16 Workers + 1 Controller
 #SBATCH --mem=32G                     # 32GB RAM is plenty
