@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#SBATCH --job-name=gen_data_array     # Job name
+#SBATCH --job-name=n20k15     # Job name
+#SBATCH --output=logs/gen_data/n20k15_%A.out  # %A=Job ID, %a=Array ID (e.g., job_123_1.out)
+#SBATCH --error=logs/gen_data/n20k15_%A.err
 #SBATCH --array=1-4                   # CRITICAL: Create 4 jobs (IDs 1, 2, 3, 4)
-#SBATCH --output=logs/gen_data/job_%A_%a.out  # %A=Job ID, %a=Array ID (e.g., job_123_1.out)
-#SBATCH --error=logs/gen_data/job_%A_%a.err
 #SBATCH --time=36:00:00               # Increased to 36 hours (Safety margin for ~28hr runtime)
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=17            # 16 Workers + 1 Controller
