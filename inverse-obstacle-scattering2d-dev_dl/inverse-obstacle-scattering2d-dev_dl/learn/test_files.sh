@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=CurrNN_Part1
-#SBATCH --output=logs/chunk_train/n20k15_part1_%j.out
+#SBATCH --output=logs/chunk_train/TEST_n20k15_part1_%j.out
 #SBATCH --error=logs/chunk_train/n20k15_part1_%j.err
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
@@ -41,31 +41,4 @@ SAVE_EVERY_EPOCHS=25
 
 # --- STANDARD RUN BLOCK (Resumes if crashed, starts fresh otherwise) ---
 CKPT_PATH="${DATA_DIR}/${MODEL_NAME}/checkpoints/ckpt_latest.pt"
-
-if [[ -f "$CKPT_PATH" ]]; then
-  echo "[INFO] Found checkpoint: $CKPT_PATH"
-  echo "[INFO] Resuming training..."
-  python "$PYTHON_SCRIPT" \
-    --dirname "$DATA_DIR" \
-    --model_name "$MODEL_NAME" \
-    --resume_ckpt "$CKPT_PATH" \
-    --epochs "$EPOCHS_PER_K" \
-    --k_start "$K_START" \
-    --k_end "$K_END" \
-    --chunk_files "$CHUNK_FILES" \
-    --num_workers "$NUM_WORKERS" \
-    --save_every_epochs "$SAVE_EVERY_EPOCHS" \
-    --shuffle_files
-else
-  echo "[INFO] No checkpoint found. Starting fresh..."
-  python "$PYTHON_SCRIPT" \
-    --dirname "$DATA_DIR" \
-    --model_name "$MODEL_NAME" \
-    --epochs "$EPOCHS_PER_K" \
-    --k_start "$K_START" \
-    --k_end "$K_END" \
-    --chunk_files "$CHUNK_FILES" \
-    --num_workers "$NUM_WORKERS" \
-    --save_every_epochs "$SAVE_EVERY_EPOCHS" \
-    --shuffle_files
-fi
+python test_files.py
