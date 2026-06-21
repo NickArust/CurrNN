@@ -83,7 +83,8 @@ save_fcn = @(name, coefs, uscat) save(name, 'coefs', 'uscat');
 % =========================================================
 % LOGIC SPLIT
 % =========================================================
-
+nargin
+mat_id
 if nargin == 0 || mat_id == 0
     % --- VALIDATION MODE ---
     fprintf('Running Validation Data Generation...\n');
