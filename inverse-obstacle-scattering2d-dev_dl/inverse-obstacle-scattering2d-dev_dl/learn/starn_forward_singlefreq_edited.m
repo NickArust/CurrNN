@@ -85,7 +85,7 @@ save_fcn = @(name, coefs, uscat) save(name, 'coefs', 'uscat');
 % =========================================================
 nargin
 mat_id
-if nargin == 0 || mat_id == 0
+if nargin==0 || mat_id == 0
     % --- VALIDATION MODE ---
     fprintf('Running Validation Data Generation...\n');
     uscat_val = zeros(nvalid, nk, n_dir, n_tgt);

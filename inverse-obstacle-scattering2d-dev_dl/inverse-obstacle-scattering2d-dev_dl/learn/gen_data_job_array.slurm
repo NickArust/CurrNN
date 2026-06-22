@@ -39,9 +39,9 @@ conda activate myenv
 # This variable will be 1 for the first job, 2 for the second, etc.
 
 echo "Starting Job Array Task ID: ${SLURM_ARRAY_TASK_ID}"
-if ["$SLURM_ARRAY_TAK_ID" -eq 1]; then
-matlab -nodisplay -nosplash -nodesktop -r "startup; starn_forward_singlefreq_edited(0); exit;"
+if [ "$SLURM_ARRAY_TASK_ID" -eq 1 ]; then
 echo 'doing validation as well'
+matlab -nodisplay -nosplash -nodesktop -r "startup; starn_forward_singlefreq_edited(0); exit;"
 fi
 matlab -nodisplay -nosplash -nodesktop -r "startup; starn_forward_singlefreq_edited(${SLURM_ARRAY_TASK_ID}); exit;"
 
