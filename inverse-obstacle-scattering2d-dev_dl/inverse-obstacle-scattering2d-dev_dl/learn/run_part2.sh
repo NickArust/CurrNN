@@ -26,13 +26,13 @@ conda activate myenv
 set -u
 
 # --- SETTINGS ---
-PYTHON_SCRIPT="chunk_train_new_loss.py"
-DATA_DIR="./data/star20_kh1_100_30_n100_80000_noise0"
-MODEL_NAME="new_loss" # Must match Part 1
+PYTHON_SCRIPT="chunk_train2.py"
+DATA_DIR="./data/star20_kh1_100_15_n100_80000_noise0"
+MODEL_NAME="test" # Must match Part 1
 
-EPOCHS_PER_K=70
-K_START=15       # Second Half
-K_END=29
+EPOCHS_PER_K=140
+K_START=8       # Second Half
+K_END=14
 
 CHUNK_FILES=16
 NUM_WORKERS=8
