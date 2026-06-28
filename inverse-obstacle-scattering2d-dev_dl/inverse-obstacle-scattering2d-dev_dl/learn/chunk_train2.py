@@ -243,6 +243,18 @@ def main():
     os.makedirs(os.path.join(model_dir, "checkpoints"), exist_ok=True)
     writer = SummaryWriter(model_dir)
 
+    os.makedirs(os.path.join(model_dir, "inverse"), exist_ok=True)
+    os.makedirs(os.path.join(model_dir, "figs"), exist_ok=True)
+
+    writer = SummaryWriter(model_dir)
+
+    with open(os.path.join(model_dir, "mean_std.txt"), "w") as f:
+        f.write(f"{mean}\n{std}\n")
+    with open(os.path.join(model_dir, "data_config.json"), "w") as f:
+        json.dump(data_cfg, f)
+    with open(os.path.join(model_dir, "train_config.json"), "w") as f:
+        json.dump(train_cfg, f)
+
     # -------------------------
     # Model Setup
     # -------------------------
