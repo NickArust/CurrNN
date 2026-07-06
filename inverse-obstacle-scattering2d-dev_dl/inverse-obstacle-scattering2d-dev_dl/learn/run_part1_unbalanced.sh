@@ -28,16 +28,16 @@ set -u
 # --- SETTINGS ---
 # Ensure this points to the MULTIPROCESSING script
 PYTHON_SCRIPT="chunk_train2.py" 
-DATA_DIR="./data/star20_kh1_100_30_n100_80000_noise0"
+DATA_DIR="./data/star20_kh1_100_15_n100_80000_noise0"
 MODEL_NAME="unbalanced" # I changed this so you don't overwrite your previous test
 
-EPOCHS_PER_K=70  # As requested
+EPOCHS_PER_K=60  # As requested
 K_START=0
-K_END=18         # First Half
+K_END=4         # First Half
 
 CHUNK_FILES=16
 NUM_WORKERS=8    # Critical for speed
-SAVE_EVERY_EPOCHS=25
+SAVE_EVERY_EPOCHS=20
 
 # --- STANDARD RUN BLOCK (Resumes if crashed, starts fresh otherwise) ---
 CKPT_PATH="${DATA_DIR}/${MODEL_NAME}/checkpoints/ckpt_latest.pt"

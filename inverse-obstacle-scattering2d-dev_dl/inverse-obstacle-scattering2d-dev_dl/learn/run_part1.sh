@@ -27,9 +27,9 @@ set -u
 
 # --- SETTINGS ---
 # Ensure this points to the MULTIPROCESSING script
-PYTHON_SCRIPT="chunk_train2.py" 
+PYTHON_SCRIPT="chunk_train_new_loss.py" 
 DATA_DIR="./data/star20_kh1_100_15_n100_80000_noise0"
-MODEL_NAME="test" # I changed this so you don't overwrite your previous test
+MODEL_NAME="new_loss" # I changed this so you don't overwrite your previous test
 
 EPOCHS_PER_K=140  # As requested
 K_START=0

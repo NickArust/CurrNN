@@ -27,16 +27,16 @@ set -u
 
 # --- SETTINGS ---
 PYTHON_SCRIPT="chunk_train2.py"
-DATA_DIR="./data/star20_kh1_100_30_n100_80000_noise0"
+DATA_DIR="./data/star20_kh1_100_15_n100_80000_noise0"
 MODEL_NAME="unbalanced" # Must match Part 1
 
-EPOCHS_PER_K=70
-K_START=19       # Second Half
-K_END=29
+EPOCHS_PER_K=120
+K_START=5       # Second Half
+K_END=9
 
 CHUNK_FILES=16
 NUM_WORKERS=8
-SAVE_EVERY_EPOCHS=25
+SAVE_EVERY_EPOCHS=20
 
 # --- STANDARD RUN BLOCK ---
 # This will automatically find the checkpoint from the end of Part 1

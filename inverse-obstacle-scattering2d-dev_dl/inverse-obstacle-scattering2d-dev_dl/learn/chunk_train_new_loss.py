@@ -274,6 +274,18 @@ def main():
     os.makedirs(os.path.join(model_dir, "checkpoints"), exist_ok=True)
     writer = SummaryWriter(model_dir)
 
+    os.makedirs(os.path.join(model_dir, "inverse"), exist_ok=True)
+    os.makedirs(os.path.join(model_dir, "figs"), exist_ok=True)
+
+    writer = SummaryWriter(model_dir)
+
+    with open(os.path.join(model_dir, "mean_std.txt"), "w") as f:
+        f.write(f"{mean}\n{std}\n")
+    with open(os.path.join(model_dir, "data_config.json"), "w") as f:
+        json.dump(data_cfg, f)
+    with open(os.path.join(model_dir, "train_config.json"), "w") as f:
+        json.dump(train_cfg, f)
+
     # -------------------------
     # Model Setup
     # -------------------------
@@ -297,7 +309,7 @@ def main():
     
     # Initialize Custom Loss
     # lambda_deriv=0.1 is a safe start. If the output is still too smooth, try 1.0.
-    loss_fn = SpectralSobolevLoss(num_coeffs=num_coeffs, lambda_deriv=0, device=device)
+    loss_fn = SpectralSobolevLoss(num_coeffs=num_coeffs, lambda_deriv=0.1, device=device)
     logger.info(f"Using SpectralSobolevLoss with lambda_deriv={loss_fn.lambda_deriv}")
     scaler = torch.amp.GradScaler("cuda", enabled=use_cuda)
 
