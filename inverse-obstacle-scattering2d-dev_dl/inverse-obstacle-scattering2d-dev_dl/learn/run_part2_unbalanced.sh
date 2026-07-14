@@ -30,9 +30,9 @@ PYTHON_SCRIPT="chunk_train2.py"
 DATA_DIR="./data/star20_kh1_100_15_n100_80000_noise0"
 MODEL_NAME="unbalanced" # Must match Part 1
 
-EPOCHS_PER_K=120
-K_START=5       # Second Half
-K_END=9
+EPOCHS_PER_K=240
+K_START=10       # Second Half
+K_END=14
 
 CHUNK_FILES=16
 NUM_WORKERS=8

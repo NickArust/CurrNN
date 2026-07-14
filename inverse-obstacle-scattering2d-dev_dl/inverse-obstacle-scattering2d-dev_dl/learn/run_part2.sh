@@ -26,9 +26,9 @@ conda activate myenv
 set -u
 
 # --- SETTINGS ---
-PYTHON_SCRIPT="chunk_train2.py"
+PYTHON_SCRIPT="chunk_train_new_loss.py" 
 DATA_DIR="./data/star20_kh1_100_15_n100_80000_noise0"
-MODEL_NAME="test" # Must match Part 1
+MODEL_NAME="new_loss" # I changed this so you don't overwrite your previous test
 
 EPOCHS_PER_K=140
 K_START=8       # Second Half
