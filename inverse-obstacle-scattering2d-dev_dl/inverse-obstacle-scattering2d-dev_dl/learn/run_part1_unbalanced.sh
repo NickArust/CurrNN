@@ -29,7 +29,7 @@ set -u
 # Ensure this points to the MULTIPROCESSING script
 PYTHON_SCRIPT="chunk_train2.py" 
 DATA_DIR="./data/star20_kh1_100_15_n100_80000_noise0"
-MODEL_NAME="unbalanced" # I changed this so you don't overwrite your previous test
+MODEL_NAME="unbalanced2" # I changed this so you don't overwrite your previous test
 
 EPOCHS_PER_K=60  # As requested
 K_START=0
