@@ -5,7 +5,7 @@ close all
 clearvars -except model_path noise_lvl k_idx
 
 
-model_path = strcat(model_path, '/test')
+model_path = strcat(model_path, '/new_loss')
 data_type = 'nn'; % 'random' or 'nn_stored' or 'nn';
 partial = false;
 
