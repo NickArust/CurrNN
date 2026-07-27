@@ -12,7 +12,7 @@ partial = false;
 noise_level = noise_lvl;
 % env_path = readlines('env_path.txt');
 % env_path = env_path(1); % only read the first line
-model_name = 'new_loss';
+model_name = 'test';
 star_specific = true;
 test_origin_alg = false;
 if strcmp(data_type, 'nn_stored')

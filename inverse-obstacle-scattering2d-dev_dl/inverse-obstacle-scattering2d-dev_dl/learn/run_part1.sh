@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=CurrNN_Part1
-#SBATCH --output=logs/chunk_train/n20k15_part1_%j.out
-#SBATCH --error=logs/chunk_train/n20k15_part1_%j.err
+#SBATCH --output=logs/chunk_train/n20k1540k_part1_%j.out
+#SBATCH --error=logs/chunk_train/n20k1540k_part1_%j.err
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
 #SBATCH --time=5-00:00:00  # Reduced to 5 days (safe for ~4.6 days of work)
@@ -28,8 +28,8 @@ set -u
 # --- SETTINGS ---
 # Ensure this points to the MULTIPROCESSING script
 PYTHON_SCRIPT="chunk_train_new_loss.py" 
-DATA_DIR="./data/star20_kh1_100_15_n100_80000_noise0"
-MODEL_NAME="new_loss" # I changed this so you don't overwrite your previous test
+DATA_DIR="./data/star20_kh1_100_15_n100_40000_noise0"
+MODEL_NAME="test" # I changed this so you don't overwrite your previous test
 
 EPOCHS_PER_K=140  # As requested
 K_START=0

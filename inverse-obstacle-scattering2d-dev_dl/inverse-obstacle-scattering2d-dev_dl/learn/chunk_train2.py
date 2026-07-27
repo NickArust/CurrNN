@@ -19,13 +19,6 @@ torch.backends.cudnn.benchmark = True
 if torch.cuda.is_available():
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.backends.cudnn.allow_tf32 = True
-def get_epochs_for_k(k):
-    if k < 10:
-        return 40
-    elif k < 20:
-        return 70
-    else:
-        return 100
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dirname", default="./data/star10_kh9_10_10_n48_2000_noise0", type=str)
@@ -36,7 +29,12 @@ def parse_args():
     parser.add_argument("--ndata_train", default=None, type=int)
     parser.add_argument("--k_start", default=0, type=int)
     parser.add_argument("--k_end", default=None, type=int)
-    parser.add_argument("--epochs", default=400, type=int)
+    parser.add_argument(
+        "--epochs",
+        default=400,
+        type=int,
+        help="Number of epochs to train each k in this invocation.",
+    )
     parser.add_argument("--chunk_files", default=16, type=int) # Acts as batch size for file loader
     parser.add_argument("--shuffle_files", action="store_true")
     parser.add_argument("--num_workers", default=8, type=int)  # CRITICAL: Controls parallelism
@@ -327,7 +325,10 @@ def main():
             pin_memory=True,
             drop_last=False
         )
-        target_epochs = get_epochs_for_k(k)
+        # The shell launchers select the desired regime for this k range
+        # (for example 60, 120, or 240 epochs).  Do not override that
+        # command-line value with a separate hard-coded schedule here.
+        target_epochs = args.epochs
         logger.info(f"Starting stage k={k} with {target_epochs} epochs")
         for e in range(start_epoch, target_epochs):
             epoch_loss_sum = 0.0
