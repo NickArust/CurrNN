@@ -78,7 +78,6 @@ def _decode_h5py_complex(arr):
 
 # NOTE: This function is now used by workers in separate processes
 def read_single_file(path, k, nk_expected, n_per_file_expected, n_dir, n_tgt, mean, std, np_dtype):
-    print(path)
     try:
         with h5py.File(path, "r") as f:
             coefs = f["coefs"][()]
