@@ -44,7 +44,7 @@ def main():
     mean_std = f.read()
     f.close()
     if network_type == 'convnet':
-        mean, std = [float(x) for x in mean_std.split('\n')]
+        mean, std = [float(x) for x in mean_std.splitlines() if x.strip()]
         loaded_net = network.ConvNet(data_cfg, train_cfg)
     elif network_type == 'complexnet':
         mean_r, std_r, mean_i, std_i = [float(x) for x in mean_std.split('\n')]
